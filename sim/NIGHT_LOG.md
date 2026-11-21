@@ -246,3 +246,19 @@ game mechanics the sim models faithfully, and judge real results on more than on
   our old code (turning every 0.45-1.1 s); the real ones may move differently.
 - Real: BB-4F3F2254, a0d7583 (4.15 version + lead70): **3.79**, -0.36. The sim's strafing house bots
   wanted less lead; the real ones evidently do not. lead70 off: back to the 4.15 behaviour.
+
+## Calibration, repeatable sim, fire gate (`sim/calibrate.py`, `sim/pair.py`)
+
+- Calibration against 16 real-scored commits (96 matches each): current house bots Pearson +0.80 /
+  Spearman +0.71, but they over-rate lead70, terrain and hunt. "strong" house bots (v1, fighter, the 3.98
+  and 4.15 bots): every version scores 0.5-1.2, correlation about 0: useless. mid setups not finished.
+- Sim made repeatable: bots get a fake clock (fixed step per perf_counter call, reset each match) and
+  PYTHONHASHSEED=0. Same code + seed = same match, so variants are compared seed by seed (`pair.py`).
+- Moving does not cost accuracy: fixed 0.6 degree spread, and every bullet in the kit's real stream flew at
+  exactly 252 m/s (no shooter velocity). Stop-and-shoot not tried.
+- Shots into cover: 70% hit a wall within 20 m of us (we fight from corners). holdlead (lead point behind
+  a wall) did nothing. muzzlecheck traces the barrel line 25 m against building heights; peekstep steps
+  sideways to clear it. tol3 fires when the aim is within 3.2 m of the lead point (was 2.5).
+- Paired, 192 fresh seeds (`sim/pair_r6.txt`): tol3+muzzlecheck+peekstep score +0.68 ± 0.33, hit rate
+  49.6 -> 54.0% (+3.4 ± 0.9), damage dealt +792 ± 225 per match, shots into cover 11.4 -> 6.3%. On.
+  Neutral or worse: peekreload, tol2, farhold, aimsize, upservo, dodge25, holdlead, strafe2, aimlat.

@@ -1,0 +1,6 @@
+=== paired, 96 seeds from 2000000 (92 s), house bots: cur
+                       score   hit %  cover %  dealt/match  taken/match  life s
+  base           5.61 ± 0.49    50.7     11.0        11012         1689     308
+  muzzlecheck    5.64 ± 0.49    53.5      5.8        10685         1727     308
+  differences vs base, same seeds (± = paired standard error):
+  muzzlecheck  score +0.02 ± 0.38    hit  +1.6 ± 1.1    dealt   -327 ±  225    taken    +39 ±   63

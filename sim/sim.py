@@ -151,6 +151,26 @@ def _share(ns, tag):
         ns["FlowField"] = flow_field
 
 
+_CLOCKS = []  # every bot's fake clock; reset at the start of each match so a seed always replays the same
+
+
+class _FakeTime:
+    """Stands in for the time module inside bots: perf_counter() advances a fixed step per call, so a
+    bot's time-boxed work (route building, hide-spot search) is the same on every run of a seed."""
+    STEP = 0.0005
+
+    def __init__(self):
+        self.t = 0.0
+        _CLOCKS.append(self)
+
+    def perf_counter(self):
+        self.t += self.STEP
+        return self.t
+
+    def __getattr__(self, k):
+        return getattr(time, k)
+
+
 def load_bot(path):
     """Load a bot file with its own copy of the mechfight wrapper; returns (BotClass, wrapper)."""
     path = os.path.abspath(path)
@@ -169,6 +189,8 @@ def load_bot(path):
     try:
         ns = {"__name__": "bot_" + tag, "__file__": path}
         exec(compile(open(path).read(), path, "exec"), ns)
+        if os.environ.get("SIM_REALTIME") != "1":
+            ns["time"] = _FakeTime()
         _share(ns, tag)
     finally:
         if saved is None:
@@ -543,6 +565,10 @@ class Match:
             amount *= max(0.0, 1.0 - victim.armor)
         victim.hp -= amount
         victim.last_combat = self.t
+        if weapon != "zone":
+            victim.__dict__["taken"] = victim.__dict__.get("taken", 0.0) + amount
+            if by is not None:
+                by.__dict__["dealt"] = by.__dict__.get("dealt", 0.0) + amount
         if by is not None:
             victim.hit_log = getattr(victim, "hit_log", []) + [(self.t, by.id)]
         ev = {"type": "damaged", "amount": round(amount, 1), "weapon": weapon, "bearing": bearing,
@@ -702,6 +728,7 @@ class Match:
                     ast_["walls"][b["band"]] += 1
                     if b["trav"] + seg * f < b["dn"] - 4.0:  # stopped short of the target: fired into cover
                         ast_["blocked"][b["band"]] += 1
+                        ast_.setdefault("block_at", []).append((round(b["trav"] + seg * f, 1), round(b["dn"], 1)))
                 continue
             if crate_hit is not None:
                 if ast_: ast_["crates"][b["band"]] += 1
@@ -787,6 +814,8 @@ def one_match(args):
     squad_opts = args[5] if len(args) > 5 else None
     world = World(kit)
     rng = random.Random(seed)
+    for c in _CLOCKS:
+        c.t = 0.0
     hello = json.loads(gzip.open(os.path.join(kit, "check", "stream.jsonl.gz"), "rt").readline())
     hello["map"]["dir"] = os.path.join(kit, "arena")
     n = hello["config"]["match"]["mechs"]
@@ -817,6 +846,8 @@ def one_match(args):
                     "attackers10": len({b for (tt, b) in getattr(me, "hit_log", []) if me.death_tick is not None and me.death_tick * DT - tt < 10}),
                     "hunters_alive": sum(1 for x in m.mechs if x.alive and x.id != me.id),
                     "aimst": me.__dict__.get("aimst"),
+                    "dealt": me.__dict__.get("dealt", 0.0), "taken": me.__dict__.get("taken", 0.0),
+                    "life": round((me.death_tick if me.death_tick is not None else m.tick) * DT, 1),
                     "house_aimst": [x.__dict__.get("aimst") for x in m.mechs if x is not me]})
     return out
 

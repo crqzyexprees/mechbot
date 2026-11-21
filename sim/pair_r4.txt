@@ -1,0 +1,20 @@
+=== paired, 96 seeds from 2200000 (422 s), house bots: cur
+                       score   hit %  cover %  dealt/match  taken/match  life s
+  base           4.76 ± 0.47    52.2      8.7        10127         1518     292
+  muzzlecheck    4.88 ± 0.45    54.9      4.9        10287         1593     292
+  muzzle+peek    5.36 ± 0.50    53.2      5.2        10272         1616     295
+  lead85         5.35 ± 0.48    55.3     10.2        10225         1658     298
+  farhold        4.84 ± 0.45    55.2      7.5        10249         1621     299
+  tol3           5.60 ± 0.52    54.0      9.0        10808         1675     306
+  holdlead       4.73 ± 0.47    54.2      6.5        10166         1543     295
+  peekreload     4.44 ± 0.47    51.9      9.6        10131         1606     297
+  upservo        5.04 ± 0.50    51.9      9.0        10019         1520     294
+  differences vs base, same seeds (± = paired standard error):
+  muzzlecheck  score +0.11 ± 0.24    hit  +1.7 ± 1.0    dealt   +160 ±  228    taken    +75 ±   34  *
+  muzzle+peek  score +0.60 ± 0.30  * hit  +0.9 ± 1.5    dealt   +145 ±  258    taken    +98 ±   54
+  lead85       score +0.59 ± 0.41    hit  +2.7 ± 1.2  * dealt    +98 ±  348    taken   +140 ±   78
+  farhold      score +0.08 ± 0.36    hit  +2.3 ± 1.0  * dealt   +122 ±  328    taken   +103 ±   44  *
+  tol3         score +0.84 ± 0.40  * hit  +1.1 ± 0.9    dealt   +681 ±  318  * taken   +157 ±   67  *
+  holdlead     score -0.03 ± 0.39    hit  +1.3 ± 0.9    dealt    +39 ±  336    taken    +25 ±   73
+  peekreload   score -0.32 ± 0.32    hit  +0.5 ± 1.1    dealt     +4 ±  299    taken    +88 ±   73
+  upservo      score +0.28 ± 0.28    hit  -0.0 ± 0.3    dealt   -108 ±  145    taken     +2 ±   48

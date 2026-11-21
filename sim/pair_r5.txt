@@ -1,0 +1,12 @@
+=== paired, 96 seeds from 2300000 (249 s), house bots: cur
+                       score   hit %  cover %  dealt/match  taken/match  life s
+  base           5.15 ± 0.46    52.4      8.1        10834         1667     310
+  tol3           5.78 ± 0.47    53.1      8.3        11500         1746     308
+  tol4           5.98 ± 0.49    53.1      9.4        11053         1680     312
+  tol3+mp        6.43 ± 0.51    53.4      6.8        12022         1789     313
+  tol4+mp        6.17 ± 0.50    53.8      8.3        11513         1708     313
+  differences vs base, same seeds (± = paired standard error):
+  tol3         score +0.64 ± 0.44    hit  +0.8 ± 1.0    dealt   +666 ±  300  * taken    +79 ±   74
+  tol4         score +0.83 ± 0.39  * hit  +0.7 ± 1.0    dealt   +219 ±  293    taken    +13 ±   60
+  tol3+mp      score +1.28 ± 0.46  * hit  -0.6 ± 1.0    dealt  +1187 ±  353  * taken   +122 ±   93
+  tol4+mp      score +1.02 ± 0.44  * hit  -0.0 ± 1.2    dealt   +679 ±  360    taken    +41 ±   93

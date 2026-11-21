@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4"}
 
 
 def flag(name):
@@ -86,7 +86,7 @@ def _lead(me, tgt, speed):
     mx, my, mz = me["pos"]
     mz += me.get("stats", {}).get("muzzle_height", 7)
     tx, ty, tz = tgt["pos"]
-    tz += 4.5
+    tz += 4.5 * (1.0 + 0.05 * tgt.get("cubes", 0) if flag("aimsize") else 1.0)
     vx, vy, vz = tgt["vel"]
     t = 0.0
     px, py, pz = tx, ty, tz
@@ -211,6 +211,24 @@ class ObstacleGrid:
                             if span[1] <= gz + self.step_up or span[0] >= gz + self.height:
                                 continue
                         self.solid[j * self.nx + i] = 1
+
+    def shot_clear(self, x, y, zb, yaw, pitch, reach):
+        """Does a bullet leaving (x, y) at height zb along (yaw, pitch) get `reach` metres without
+        meeting a building? Checks every metre against each cell's solid height spans."""
+        ca, sa, tp = math.cos(yaw), math.sin(yaw), math.tan(pitch)
+        d = 1.0
+        while d <= reach:
+            px, py = x + ca * d, y + sa * d
+            if not (self.x0 + 1 < px < self.x1 - 1 and self.y0 + 1 < py < self.y1 - 1):
+                return False
+            spans = self.cells.get(int((py - self.y0) / CELL) * self.nx + int((px - self.x0) / CELL))
+            if spans:
+                h = zb + tp * d
+                for base, top in spans:
+                    if base < h < top:
+                        return False
+            d += 1.0
+        return True
 
     def blocked(self, x, y, z):
         """Would a mech with feet at height z be unable to stand at (x, y)?"""
@@ -479,6 +497,8 @@ class Bot:
         self.strafe_until = 0.0
         self.zone_boosting = False
         self.vema = {}            # enemy id -> smoothed (vx, vy, vz, t)
+        self.peek = None          # (dx, dy, until): sidestep that clears our barrel line past a corner
+        self.t_now = 0.0
         self.zone_live = False    # does the server already send the interpolated circle?
         self.last_zone = None
         self.field = None         # FlowField toward the next circle's safe disk
@@ -1028,7 +1048,31 @@ class Bot:
             gyaw, gpitch, gd = _lead(gme, gtgt, st["speed"])
             if aim is None:
                 aim, tag = (gyaw, gpitch), "gun"
-            if gd < st["range"] and _aimed(me, gyaw, gpitch, gd, 2.5) and not blind:
+            if flag("holdlead") and not blind and self.grid is not None and abs(tp[2] - z) < 4:
+                # holdlead: the bullet meets the target at the lead point, not where it stands now; if a
+                # wall is in the way of that point, it is about to duck behind cover: stop now
+                gh = gd * math.cos(gpitch)
+                lx, ly = x + math.cos(gyaw) * gh, y + math.sin(gyaw) * gh
+                if not self.grid.los(x, y, lx, ly):
+                    blind = True
+            if flag("muzzlecheck") and not blind and self.grid is not None:
+                # muzzlecheck: most shots into cover hit a wall within 20 m of us (we fight from corners);
+                # trace the barrel's actual line for the first 25 m and hold the trigger if it meets a wall
+                mh = stats.get("muzzle_height", 7.0)
+                reach_ = min(gd * math.cos(gpitch), 25.0)
+                if not self.grid.shot_clear(x, y, z + mh, me["aim"][0], me["aim"][1], reach_):
+                    blind = True
+                    if flag("peekstep"):
+                        # step sideways to whichever side clears the line, for the next 0.6 s
+                        nx_, ny_ = -math.sin(gyaw), math.cos(gyaw)
+                        for side in (1.0, -1.0) if self.strafe_side > 0 else (-1.0, 1.0):
+                            ox, oy = x + nx_ * 3.5 * side, y + ny_ * 3.5 * side
+                            if self.grid.shot_clear(ox, oy, z + mh, math.atan2(tp[1] - oy, tp[0] - ox), gpitch, reach_):
+                                self.peek = (nx_ * side, ny_ * side, self.t_now + 0.6)
+                                break
+            tol = 2.0 if flag("tol2") else 4.0 if flag("tol4") else 3.2 if flag("tol3") else 2.5
+            far_ok = not (flag("farhold") and gd > 150 and math.hypot(*tgt["vel"][:2]) > 3.0)
+            if gd < st["range"] and _aimed(me, gyaw, gpitch, gd, tol) and not blind and far_ok:
                 fire[slots["gun"]] = True
 
         if aim is None:
@@ -1101,6 +1145,7 @@ class Bot:
         enemies = sorted((m for m in obs["mechs"] if m["kind"] == "mech"),
                          key=lambda m: math.dist(m["pos"], me["pos"]))
         seen = {m["id"] for m in obs["mechs"]}
+        self.t_now = t
         a_ = 1.0 - math.exp(-0.1 / 0.4)  # smoothed enemy velocity, time constant 0.4 s
         for m in enemies:
             pv = self.vema.get(m["id"])
@@ -1125,6 +1170,8 @@ class Bot:
         if obs["offer"]:
             ids = [c["id"] for c in obs["offer"]["choices"]]
             pref = UP_POWER if flag("uppower") else UP_TANK if flag("uptank") else UPGRADE_PREF
+            if flag("upservo"):  # mobility first: +8% walk and boost speed per stack
+                pref = ["servos"] + [u for u in pref if u != "servos"]
             if flag("upmag"):  # +8 rounds and -20% reload: +31% sustained gun damage, vs +15% for gun_damage
                 pref = ["gun_mag"] + [u for u in pref if u != "gun_mag"]
             act["pick"] = min(range(len(ids)), key=lambda i: pref.index(ids[i]) if ids[i] in pref else 99)
@@ -1196,6 +1243,14 @@ class Bot:
                 self.hiding_until = t + 4.0
             if t < self.hiding_until and near:
                 hide = self._hide_spot(t, x, y, [(m["pos"][0], m["pos"][1]) for m in near])
+        if hide is None and flag("peekreload") and not risk and enemies and "gun" in slots:
+            # peek and reload: a 2.4 s reload in the open is free damage for them; step behind cover
+            g_ = me["weapons"][slots["gun"]]
+            if (g_.get("reload") or 0) > 0.5 and self.grid is not None:
+                vis = [(m["pos"][0], m["pos"][1]) for m in enemies if math.dist(m["pos"][:2], (x, y)) < 160
+                       and self.grid.los(x, y, m["pos"][0], m["pos"][1])]
+                if vis:
+                    hide = self._hide_spot(t, x, y, vis)
         if hide is None and regroup_spot is not None:
             hide = regroup_spot
         if hide is not None:
@@ -1397,7 +1452,7 @@ class Bot:
             self.zone_boosting = True
         elif not risk or energy < 3:
             self.zone_boosting = False
-        dodge_boost = urgency >= 1.0 and energy > 40 and t >= self.concuss_until
+        dodge_boost = urgency >= 1.0 and energy > (25 if flag("dodge25") else 40) and t >= self.concuss_until
         # arcsave: in a lightning fight energy is damage (3 energy = 60 damage, boosting burns 17/s),
         # so don't spend it dodging; the zone still gets its boost
         arc_fight = (flag("arcsave") and "lightning" in slots and bool(enemies)
@@ -1407,6 +1462,10 @@ class Bot:
         boost = grounded and mag > 0.5 and (self.zone_boosting or dodge_boost or drop_boost)
         boost = boost or boost_climb
 
+        if (flag("peekstep") and self.peek is not None and t < self.peek[2] and enemies and not risk
+                and mode not in ("hide", "regroup")):
+            hx, hy = _norm(hx * 0.3 + self.peek[0], hy * 0.3 + self.peek[1])
+            mag = 1.0
         act["move"] = [hx * mag, hy * mag]
         act["boost"] = bool(boost)
         act["jump"] = jump
