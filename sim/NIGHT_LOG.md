@@ -231,3 +231,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Real: BB-259E4208, 36b7d70 (e7f1836 + arcsave): **3.71**, -0.44. Dodge boosts and the 30-energy floor
   matter in lightning fights. arcsave off.
 - `lootfar2`: walk up to 100 m (was 40) for lightning or a laser when no enemy is within 80 m, any time.
+- Real: BB-E5A03109, 47f437b (4.15 version + lootfar2): **4.10**, within noise of 4.15, not better. lootfar2 off.
