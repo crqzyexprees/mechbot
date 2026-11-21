@@ -1,0 +1,7 @@
+
+=== confirm, 384 fresh matches each, seeds 1500000+ (410 s)
+  terrain                          score  4.42 ± 0.20  kills 3.72  median death   301 s  worst tick 13.8 ms  (n=384)
+  base                             score  4.32 ± 0.20  kills 3.65  median death   300 s  worst tick 15.5 ms  (n=384)
+  base                             mean cubes held at end 5.89  zone deaths 77/384
+  terrain                          mean cubes held at end 5.96  zone deaths 83/384
+  terrain - base = +0.11 ± 0.29  (+0.4 s.e.)  not clearly better

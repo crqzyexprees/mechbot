@@ -22,7 +22,8 @@ than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) rea
 | BB-2B482130 | ed981aa | U + crates + seek | +0.30 ± 0.30 over U (384 each) | **3.96** (best, +0.44) |
 | BB-CDBDE7C4 | b5900fa | ed981aa + lootfar: walk up to 120 m for ground weapons in the first 150 s | (sim has no loot) | 3.73 (worse, off) |
 | BB-8216156A | 2e8d5c2 | ed981aa + drones (snipe NPC drones for cubes) | (sim has no NPCs) | **4.06** (best, +0.10) |
-| next | cratego | 2e8d5c2 + walk to crates when idle, shoot them from 90 m | +0.23 ± 0.29 (sim) | real test |
+| BB-D46D4999 | 39da462 | 2e8d5c2 + cratego: walk to crates when idle, shoot them from 90 m | +0.23 ± 0.29 (sim) | 3.96 (no gain, off) |
+| next | terrain+inflate | 2e8d5c2 + terrain-aware walls + radius-aware routes | neutral, fewer zone deaths | real test |
 
 ### Change of method (03:55)
 Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
@@ -112,3 +113,37 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - cratego = when idle in a safe zone and nobody in sight, walk toward the nearest ground crate within
   150 m (inside the next circle), and shoot crates from up to 90 m instead of 65 m.
 - 384 fresh each: cratego 4.54 ± 0.21 vs base 4.31 ± 0.20 (+0.23 ± 0.29, 0.8 s.e.); no regression -> real test.
+
+### Round 8 (zone deaths, widefield): `sim/confirm_r8.txt`
+- In the sim, 20 of 96 matches end in a zone death, mostly at 138-215 s, placing 15th-16th (mean score
+  0.95 vs 3.69 otherwise). Traced seed 1300016 (`sim/trace_squad.py`): the bot sat 20 m outside the zone
+  for 30 s, mode "zone" with no route, until it died. Cause: the flow field only searches the live circle
+  + 40 m; the pocket west of the stadium connects to the safe zone only through a detour outside that
+  limit, so the field never reached it and the bot steered straight into the wall.
+- widefield = flow field search area live circle + 150 m. Result (`confirm_r8.txt`): no help, zone deaths
+  69 -> 67 of 384, score 4.39 -> 4.25. Off.
+- Deeper trace (seeds 1300018, 1300037): the bot *spawned* inside a pocket south of the stadium that the
+  grid says is sealed (flood fill from it never reaches the safe zone). The pocket is sealed by "walls"
+  whose tops are below the ground there (down to 14 m under our feet): prisms buried in the terrain, such
+  as the sunken stadium bowl's lower rows. Both the bot's grid and the sim marked every prism taller
+  than 1.2 m as a wall regardless of terrain height. 691 of 44,509 wall cells (1.6%) are such phantoms.
+- This matters for the real game too: phantom walls bend the bot's routes and block its line-of-sight
+  checks (clear-shot targeting, crates, drones).
+- terrain = the bot loads the terrain heights and only marks a cell as a wall where a prism rises above the
+  ground and isn't overhead. The sim's world now uses the same rule (old: `sim/sim_pre_terrain.py.bak`).
+
+### Round 9 (terrain): `sim/confirm_r9.txt`
+- terrain 4.42 ± 0.20 vs base 4.32 ± 0.20 (+0.4 s.e.); zone deaths 83 vs 77 of 384: phantom walls are not the
+  main cause of zone deaths.
+- Retrace of seed 1300018 with terrain on: the bot now has a route but oscillates in place around a
+  waypoint 5-8 m away for 35 s. The route goes through a gap one cell (2 m) wide: the flow field treats
+  the mech as a point, but it is 5 m wide, so it cannot fit (in the sim or the real game).
+- inflate = the flow field searches a wall mask grown by one cell (gaps under about 6 m are closed, paths keep
+  off walls). Mask built at hello (0.13 s total init). On seed 1300018 it leaves the pocket but dies
+  outside the zone at about 160 s instead: one seed, so running the full comparison.
+
+### Round 10 (terrain x inflate): `sim/confirm_r10.txt`
+- 384 fresh each: inflate 4.70, base 4.62, terrain+inflate 4.57, terrain 4.52 (all within ±0.1 of base, ±0.3 s.e.).
+  Zone deaths: base 81, terrain 81, inflate 69, terrain+inflate 67 of 384.
+- Both fixes are physically right for the real map (no buried walls; no 2 m squeezes for a 5 m mech) and
+  the sim can't judge line-of-sight effects, so terrain+inflate goes to a real test on top of 2e8d5c2.

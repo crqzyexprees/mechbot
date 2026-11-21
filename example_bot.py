@@ -19,6 +19,7 @@ Standard library only; uses the kit's mechfight.py wrapper.
 import json
 import math
 import os
+import sys
 import random
 import time
 from array import array
@@ -36,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield"}
 
 
 def flag(name):
@@ -115,8 +116,9 @@ class ObstacleGrid:
     """Coarse occupancy grid of the map's solid prisms. Each cell keeps the (base, top) height
     spans that cover it, so the same cell can be a wall at street level and floor on a roof."""
 
-    def __init__(self, world, step_up, height):
+    def __init__(self, world, step_up, height, terrain=None):
         b = world["bounds"]
+        self.terrain = terrain  # (x0, y0, step, nx, ny, heights in cm) or None
         self.x0, self.y0 = b["minX"], b["minY"]
         self.x1, self.y1 = b["maxX"], b["maxY"]
         self.nx = int((self.x1 - self.x0) / CELL) + 1
@@ -141,6 +143,34 @@ class ObstacleGrid:
     def center(self, k):
         j, i = divmod(k, self.nx)
         return self.x0 + (i + 0.5) * CELL, self.y0 + (j + 0.5) * CELL
+
+    def walk_mask(self):
+        """Solid mask grown by one cell, so paths keep our 2.5 m radius off walls and never squeeze
+        through gaps narrower than about 6 m (we're 5 m wide). Built once, on first use."""
+        m = getattr(self, "_walk", None)
+        if m is None:
+            nx, src = self.nx, self.solid
+            m = bytearray(src)
+            for k in range(nx + 1, len(src) - nx - 1):
+                if src[k]:
+                    for d in (-nx - 1, -nx, -nx + 1, -1, 1, nx - 1, nx, nx + 1):
+                        m[k + d] = 1
+            self._walk = m
+        return m
+
+    def ground(self, x, y):
+        """Terrain height at (x, y), bilinear; 0 without terrain data."""
+        if self.terrain is None:
+            return 0.0
+        tx0, ty0, st, tnx, tny, h = self.terrain
+        fx, fy = (x - tx0) / st, (y - ty0) / st
+        i, j = int(fx), int(fy)
+        if not (0 <= i < tnx - 1 and 0 <= j < tny - 1):
+            return 0.0
+        u, v = fx - i, fy - j
+        a = h[j * tnx + i] * (1 - u) + h[j * tnx + i + 1] * u
+        c = h[(j + 1) * tnx + i] * (1 - u) + h[(j + 1) * tnx + i + 1] * u
+        return (a * (1 - v) + c * v) * 0.01
 
     def _fill(self, p):
         span = (float(p["base"]), float(p["top"]))
@@ -174,6 +204,10 @@ class ObstacleGrid:
                 for i in range(i0, i1 + 1):
                     self.cells.setdefault(j * self.nx + i, []).append(span)
                     if solid:
+                        if self.terrain is not None:  # buried under the ground or overhead: not a wall
+                            gz = self.ground(self.x0 + (i + 0.5) * CELL, yc)
+                            if span[1] <= gz + self.step_up or span[0] >= gz + self.height:
+                                continue
                         self.solid[j * self.nx + i] = 1
 
     def blocked(self, x, y, z):
@@ -219,7 +253,21 @@ def _load_grid(hello, mech):
         d = hello["map"]["dir"]
         with open(os.path.join(d, "v2", "world.json")) as f:
             world = json.load(f)
-        g = ObstacleGrid(world, mech.get("step_up", 1.2), mech.get("height", 9))
+        terrain = None
+        if flag("terrain"):
+            try:
+                t = world["terrain"]
+                h = array("h")
+                with open(os.path.join(d, "v2", t.get("file", "terrain.i16")), "rb") as f:
+                    h.frombytes(f.read())
+                if sys.byteorder != "little":
+                    h.byteswap()
+                terrain = (t["minX"], t["minY"], t["step"], t["nx"], t["ny"], h)
+            except Exception as e:
+                mf.log(f"no terrain ({e!r})")
+        g = ObstacleGrid(world, mech.get("step_up", 1.2), mech.get("height", 9), terrain)
+        if flag("inflate"):
+            g.walk_mask()  # build it now, inside the hello budget, not on a 50 ms tick
         mf.log(f"obstacle grid: {len(g.cells)} cells")
         return g
     except Exception as e:  # no map: everything still works, steering just sees open ground
@@ -255,7 +303,7 @@ class FlowField:
                 if self.ilo[j] <= i <= self.ihi[j]:
                     continue
                 k = j * nx + i
-                if not grid.solid[k]:
+                if not (grid.walk_mask() if flag("inflate") else grid.solid)[k]:
                     self.dist[k] = 0
                     self.q.append(k)
 
@@ -270,7 +318,8 @@ class FlowField:
     def build(self, budget_s):
         if self.done:
             return
-        g, nx, dist, q, solid = self.g, self.g.nx, self.dist, self.q, self.g.solid
+        g, nx, dist, q = self.g, self.g.nx, self.dist, self.q
+        solid = g.walk_mask() if flag("inflate") else g.solid
         lo, hi, ilo, ihi = self.lo, self.hi, self.ilo, self.ihi
         end = time.perf_counter() + budget_s
         n = 0
@@ -428,7 +477,8 @@ class Bot:
         key = (tuple(zone["next_center"]), zone["next_radius"])
         if self.field is None or self.field.key != key:
             cx, cy, r = self._zone_at(zone, t, t)
-            self.field = FlowField(self.grid, key, zone["next_center"], self._safe_r(zone), (cx, cy), r + 40.0)
+            margin = 150.0 if flag("widefield") else 40.0  # room for detours around walls near the edge
+            self.field = FlowField(self.grid, key, zone["next_center"], self._safe_r(zone), (cx, cy), r + margin)
             return None  # setup is this tick's work; start the search next tick
         self.field.build(FIELD_SLICE_S)
         return self.field if self.field.done else None

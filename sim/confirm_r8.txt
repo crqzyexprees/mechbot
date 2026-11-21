@@ -1,0 +1,7 @@
+
+=== confirm, 384 fresh matches each, seeds 1400000+ (432 s)
+  base                             score  4.39 ± 0.21  kills 3.65  median death   301 s  worst tick 14.2 ms  (n=384)
+  widefield                        score  4.25 ± 0.20  kills 3.54  median death   301 s  worst tick 20.2 ms  (n=384)
+  base                             mean cubes held at end 5.95  zone deaths 69/384
+  widefield                        mean cubes held at end 5.85  zone deaths 67/384
+  widefield - base = -0.14 ± 0.29  (-0.5 s.e.)  not clearly better

@@ -20,6 +20,7 @@ house bot sees it (or always, with --omniscient). Non-hunters ignore the candida
 in the last 10 s. House bots only take zone damage in the final circle (they play the zone well).
 
 Cubes: death drops (victim's + 2), pickup, +HP/+damage/+size scaling. Ground crates (300 HP, 1 cube).
+Prisms buried under the terrain (or overhead) are not walls.
 Upgrade offers at cube thresholds (mech + gun upgrades; sensors = +25 m vision only).
 Not modelled: loot, mortar/laser/lightning, NPCs, roof crates, supply drops, jumping,
 jets, roofs, bridges, trees, mech-vs-mech pushing. The bots under test get `[]` for those fields.
@@ -59,10 +60,6 @@ class World:
         self.nx = int((self.x1 - self.x0) / CELL) + 1
         self.ny = int((self.y1 - self.y0) / CELL) + 1
         self.solid = bytearray(self.nx * self.ny)
-        for p in w["prisms"]:
-            if p["kind"] == "bridge" or p["top"] - p["base"] <= 1.2:
-                continue
-            self._fill(p)
         t = w["terrain"]
         self.tx0, self.ty0, self.tstep, self.tnx, self.tny = t["minX"], t["minY"], t["step"], t["nx"], t["ny"]
         self.h = array("h")
@@ -70,6 +67,10 @@ class World:
             self.h.frombytes(f.read())
         if sys.byteorder != "little":
             self.h.byteswap()
+        for p in w["prisms"]:
+            if p["kind"] == "bridge" or p["top"] - p["base"] <= 1.2:
+                continue
+            self._fill(p)
 
     def _fill(self, p):
         edges, ymin, ymax = [], 1e18, -1e18
@@ -86,6 +87,9 @@ class World:
                         if (ay <= yc < by) or (by <= yc < ay))
             for k in range(0, len(xs) - 1, 2):
                 for i in range(max(0, int((xs[k] - self.x0) / CELL)), min(self.nx - 1, int((xs[k + 1] - self.x0) / CELL)) + 1):
+                    gz = self.ground(self.x0 + (i + 0.5) * CELL, yc)
+                    if p["top"] <= gz + 1.2 or p["base"] >= gz + 9:
+                        continue  # buried under the terrain, or overhead: not a wall
                     self.solid[j * self.nx + i] = 1
 
     def blocked(self, x, y):

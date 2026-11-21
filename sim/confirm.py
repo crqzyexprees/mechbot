@@ -14,7 +14,8 @@ def main():
         res = sweep.run([(lab, p, base + i) for lab, p in paths.items() for i in range(n)], pool)
     sweep.table(f"confirm, {n} fresh matches each, seeds {base}+ ({time.time() - t0:.0f} s)", res)
     for lab, _ in specs:
-        print(f"  {lab:32s} mean cubes held at end {sum(r.get('cubes', 0) for r in res[lab]) / len(res[lab]):.2f}")
+        print(f"  {lab:32s} mean cubes held at end {sum(r.get('cubes', 0) for r in res[lab]) / len(res[lab]):.2f}"
+              f"  zone deaths {sum(1 for r in res[lab] if r.get('zone_death'))}/{len(res[lab])}")
     ref = specs[0][0]
     rm, rse, *_ = sweep.stats(res[ref])
     for lab, _ in specs[1:]:

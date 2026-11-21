@@ -1,0 +1,13 @@
+
+=== confirm, 384 fresh matches each, seeds 1600000+ (815 s)
+  inflate                          score  4.70 ± 0.23  kills 3.73  median death   301 s  worst tick 13.3 ms  (n=384)
+  base                             score  4.62 ± 0.22  kills 3.71  median death   300 s  worst tick 13.5 ms  (n=384)
+  terrain+inflate                  score  4.57 ± 0.21  kills 3.79  median death   301 s  worst tick 13.9 ms  (n=384)
+  terrain                          score  4.52 ± 0.22  kills 3.65  median death   299 s  worst tick 13.9 ms  (n=384)
+  base                             mean cubes held at end 6.06  zone deaths 81/384
+  terrain                          mean cubes held at end 5.93  zone deaths 81/384
+  inflate                          mean cubes held at end 6.13  zone deaths 69/384
+  terrain+inflate                  mean cubes held at end 6.33  zone deaths 67/384
+  terrain - base = -0.10 ± 0.31  (-0.3 s.e.)  not clearly better
+  inflate - base = +0.07 ± 0.32  (+0.2 s.e.)  not clearly better
+  terrain+inflate - base = -0.06 ± 0.31  (-0.2 s.e.)  not clearly better
