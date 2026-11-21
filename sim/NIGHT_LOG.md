@@ -18,6 +18,16 @@ passive non-hunters, late=300), calibrated against real practice scores.
 Same commit scored 3.56 and 3.42: the real scorer is repeatable to about ±0.1 (fixed seeds), far tighter
 than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) really is worse.
 
+| BB-FC832A13 | 379f5bf | U: A + damage-first upgrades (uppower) | about +0.40 ± 0.14 over A (1152 each) | 3.52 (A: 3.56, 3.42) |
+| BB-?       | (next) | U + crates + seek | +0.30 ± 0.30 over U (384 each) | real test |
+
+### Change of method (03:55)
+Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
++0.96 / -0.46, damage-first upgrades +0.40 / ~0. The sim finds mechanics (cubes) but overrates combat and
+upgrade tweaks; its house bots are gun-only copies of our own code. The real scorer repeats to about ±0.07
+per run and allows 4 runs an hour, so it is the better judge. From here: the sim screens for crashes,
+slow ticks and clear regressions; real submissions decide what becomes the default.
+
 Note: the site scores one submission per team at a time; the next one is refused until it finishes.
 
 Sim tracked the first change well: predicted +0.44, real +0.35. It missed the second: predicted
@@ -82,3 +92,8 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Pooled 576 each: about +0.30 ± 0.19 (1.6 s.e.).
 - 576 more (`confirm_r5c.txt`): uppower 3.98 ± 0.17 vs A 3.48 ± 0.14 = +0.50 ± 0.22 (2.3 s.e.).
   Pooled 1152 each: about +0.40 ± 0.14 (2.8 s.e.) -> BETTER. Shipping A + uppower.
+
+### Round 6 (crates, seek on the U base): `sim/confirm_r6.txt`
+- Upgrades make every cube worth more, so re-testing crates and seek (both neutral/borderline before).
+- 384 fresh each: U 4.12 ± 0.21, U+crates 4.16, U+seek 4.17, U+crates+seek 4.42 ± 0.21 (+0.30 ± 0.30, 1.0 s.e.).
+  Cubes held 4.6 -> 5.6 with both. No regression, so U+crates+seek goes to a real test.

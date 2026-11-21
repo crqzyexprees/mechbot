@@ -1,0 +1,13 @@
+
+=== confirm, 384 fresh matches each, seeds 1100000+ (837 s)
+  U+crates+seek                    score  4.42 ± 0.21  kills 3.62  median death   301 s  worst tick 14.7 ms  (n=384)
+  U+seek                           score  4.17 ± 0.20  kills 3.48  median death   301 s  worst tick 13.9 ms  (n=384)
+  U+crates                         score  4.16 ± 0.20  kills 3.45  median death   301 s  worst tick 23.5 ms  (n=384)
+  U                                score  4.12 ± 0.21  kills 3.35  median death   301 s  worst tick 14.6 ms  (n=384)
+  U                                mean cubes held at end 4.60
+  U+crates                         mean cubes held at end 5.16
+  U+seek                           mean cubes held at end 4.69
+  U+crates+seek                    mean cubes held at end 5.61
+  U+crates - U = +0.04 ± 0.29  (+0.1 s.e.)  not clearly better
+  U+seek - U = +0.05 ± 0.29  (+0.2 s.e.)  not clearly better
+  U+crates+seek - U = +0.30 ± 0.30  (+1.0 s.e.)  not clearly better
