@@ -981,7 +981,8 @@ class Bot:
                     pitch_t = math.atan2(tp[2] + 4.5 - (z + stats.get("muzzle_height", 7)), d)
                     aim, tag = (yaw_t, pitch_t), "arc"
                 in_cone = abs(_angdiff(me["aim"][0], yaw_t)) < math.radians(st["cone_deg"]) / 2
-                if in_cone and me["energy"] > 30 and LG["cooldown"] <= 0:
+                floor = (15 if self.zone_boosting else 3) if flag("arcsave") else 30
+                if in_cone and me["energy"] > floor and LG["cooldown"] <= 0:
                     fire[slots["lightning"]] = True
 
         # mortar: lob it when it's (nearly) ready and the target isn't close enough to splash us
@@ -1370,6 +1371,12 @@ class Bot:
         elif not risk or energy < 3:
             self.zone_boosting = False
         dodge_boost = urgency >= 1.0 and energy > 40 and t >= self.concuss_until
+        # arcsave: in a lightning fight energy is damage (3 energy = 60 damage, boosting burns 17/s),
+        # so don't spend it dodging; the zone still gets its boost
+        arc_fight = (flag("arcsave") and "lightning" in slots and bool(enemies)
+                     and math.dist(enemies[0]["pos"][:2], (x, y)) < self.lightning_range + 10)
+        if arc_fight:
+            dodge_boost = False
         boost = grounded and mag > 0.5 and (self.zone_boosting or dodge_boost or drop_boost)
         boost = boost or boost_climb
 

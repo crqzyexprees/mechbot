@@ -226,3 +226,5 @@ game mechanics the sim models faithfully, and judge real results on more than on
   working tree, uncommitted. The sim has no loot weapons, so only a real submission can test it.
 - Real: BB-A3FFDA23, e7f1836 (lootflip on top of the 3.98 version): **4.15**, new best, entered in the
   final. +0.17 over 3.98 for the loot order alone. Team rank 109 of 252 at 4.15.
+- `arcsave`: in a lightning fight (target within lightning range + 10 m) no dodge boosts, and lightning
+  fires down to 3 energy (15 while zone-boosting) instead of stopping at 30. Real-only (no lightning in the sim).
