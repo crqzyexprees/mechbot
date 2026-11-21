@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "laserblend", "tol6", "gatehv", "gatehv2"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "reloadduck"}
 
 
 def flag(name):
@@ -1268,6 +1268,26 @@ class Bot:
                        and self.grid.los(x, y, m["pos"][0], m["pos"][1])]
                 if vis:
                     hide = self._hide_spot(t, x, y, vis)
+        if hide is None and flag("reloadduck") and not risk and enemies and "gun" in slots and self.grid is not None:
+            # reload duck: during a reload, a short sidestep behind the corner we're fighting from (a far
+            # hiding spot costs the whole reload in the open); peekstep brings us back out after
+            g_ = me["weapons"][slots["gun"]]
+            if (g_.get("reload") or 0) > 0.4:
+                f0 = enemies[0]
+                fx, fy = f0["pos"][0], f0["pos"][1]
+                if math.dist((fx, fy), (x, y)) < 200 and self.grid.los(x, y, fx, fy):
+                    ux, uy = _norm(fx - x, fy - y)
+                    best_ = None
+                    for side in (1.0, -1.0):
+                        for k in (3.0, 5.0, 7.0):
+                            ox, oy = x - uy * side * k, y + ux * side * k
+                            if (not self.grid.los(ox, oy, fx, fy) and self.grid.los(x, y, ox, oy)
+                                    and not self.grid.blocked(ox, oy, z)):
+                                if best_ is None or k < best_[0]:
+                                    best_ = (k, (ox, oy))
+                                break
+                    if best_ is not None:
+                        hide = best_[1]
         if hide is None and regroup_spot is not None:
             hide = regroup_spot
         if hide is not None:

@@ -1,0 +1,8 @@
+=== paired, 192 seeds from 2900000 (297 s), house bots: cur
+                       score   hit %  cover %  dealt/match  taken/match  life s
+  base           6.42 ± 0.36    55.5      6.3        10800         1642     299
+  reloadduck     6.44 ± 0.37    56.3      6.3        11137         1597     297
+  peekreload     5.80 ± 0.34    55.2      6.6        10638         1641     293
+  differences vs base, same seeds (± = paired standard error):
+  reloadduck   score +0.02 ± 0.30    hit  +0.5 ± 0.6    dealt   +337 ±  225    taken    -44 ±   52
+  peekreload   score -0.62 ± 0.31  * hit  -0.5 ± 0.6    dealt   -162 ±  258    taken     -1 ±   59

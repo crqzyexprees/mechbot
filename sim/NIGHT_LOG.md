@@ -275,3 +275,8 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - topup (reload whenever a round is missing with nobody around, under 90% behind cover): -0.10 ± 0.34. Off.
 - laserblend (keep the gun firing on its own lead while the laser charges; swing to the beam line for
   the last 0.1 s): real-only (no laser in the sim). In the code, off.
+- Real: BB-6F93F2DB, c36b625 (4.42 version + tol5): **4.08**, -0.34. Like lead70, a sim-tuned aim setting
+  lost for real: the sim's house bots move unlike the real ones. tol5 off (back to tol3).
+- reloadduck (sidestep up to 7 m behind the corner during a reload): sim +0.02 ± 0.30 (`pair_r11.txt`),
+  far hide (peekreload) -0.62 ± 0.31. The sim's house bots hit only ~7%, so it undervalues cover. Off.
+- Next real test: laserblend on the 4.42 version.
