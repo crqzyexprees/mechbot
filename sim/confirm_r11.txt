@@ -1,0 +1,7 @@
+
+=== confirm, 384 fresh matches each, seeds 1800000+ (421 s)
+  steerwp                          score  4.89 ± 0.23  kills 3.79  median death   302 s  worst tick 13.9 ms  (n=384)
+  base                             score  4.32 ± 0.21  kills 3.54  median death   301 s  worst tick 15.2 ms  (n=384)
+  base                             mean cubes held at end 5.72  zone deaths 61/384
+  steerwp                          mean cubes held at end 6.16  zone deaths 53/384
+  steerwp - base = +0.57 ± 0.31  (+1.8 s.e.)  not clearly better

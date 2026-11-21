@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate"}
 
 
 def flag(name):
@@ -1013,6 +1013,7 @@ class Bot:
         drop = None if risk else self._drop_plan(obs, me, x, y, boost_speed, enemies)
 
         mode = ("path" if route else "zone") if target is not None else "safe"
+        wp_d = None  # distance to the route waypoint when we're following the flow field
         pull = 1.0
         drop_boost = False
         # regroup: heal to 85% between fights, out of sight, unless someone is shooting at us
@@ -1067,6 +1068,7 @@ class Bot:
         elif route is not None:
             wp = route[0]
             gx, gy = _norm(wp[0] - x, wp[1] - y)
+            wp_d = math.hypot(wp[0] - x, wp[1] - y)
             mf.draw.line([x, y, z + 1.5], [wp[0], wp[1], z + 1.5], "#ffd060")
         elif target is not None:
             gx, gy = _norm(target[0] - x, target[1] - y)
@@ -1171,6 +1173,10 @@ class Bot:
             self.detour = None
             if mag > 0.05:
                 reach = 9.0 + math.hypot(vx, vy) * 0.4
+                if flag("steerwp") and wp_d is not None and mode == "path":
+                    # the waypoint is string-pulled to a cell we can walk straight to; the route turns
+                    # there, so a wall past it is not in our way
+                    reach = max(2.0, min(reach, wp_d + 1.0))
                 hx, hy = self._steer(x, y, z, hx, hy, reach)
             self._update_stuck(t, x, y, mag, hx, hy, z, walk)
 

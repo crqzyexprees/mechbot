@@ -23,7 +23,8 @@ than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) rea
 | BB-CDBDE7C4 | b5900fa | ed981aa + lootfar: walk up to 120 m for ground weapons in the first 150 s | (sim has no loot) | 3.73 (worse, off) |
 | BB-8216156A | 2e8d5c2 | ed981aa + drones (snipe NPC drones for cubes) | (sim has no NPCs) | **4.06** (best, +0.10) |
 | BB-D46D4999 | 39da462 | 2e8d5c2 + cratego: walk to crates when idle, shoot them from 90 m | +0.23 ± 0.29 (sim) | 3.96 (no gain, off) |
-| next | terrain+inflate | 2e8d5c2 + terrain-aware walls + radius-aware routes | neutral, fewer zone deaths | real test |
+| BB-491F2EED | eac4376 | 2e8d5c2 + terrain-aware walls + radius-aware routes | neutral, fewer zone deaths | 3.77 (worse, both off) |
+| next | steerwp | 2e8d5c2 + steering looks only as far as the route waypoint | +0.31 ± 0.22 (sim, 768) | real test |
 
 ### Change of method (03:55)
 Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
@@ -147,3 +148,19 @@ game mechanics the sim models faithfully, and judge real results on more than on
   Zone deaths: base 81, terrain 81, inflate 69, terrain+inflate 67 of 384.
 - Both fixes are physically right for the real map (no buried walls; no 2 m squeezes for a 5 m mech) and
   the sim can't judge line-of-sight effects, so terrain+inflate goes to a real test on top of 2e8d5c2.
+
+- Real: eac4376 (terrain+inflate) scored 3.77 vs best 4.06: -0.29, about 3x scorer noise. Both off again.
+  The sim's zone-death gain did not carry over; likely the real game's collision lets a mech through gaps
+  the inflated mask closes, so inflate forces long detours. The sim cannot judge this.
+
+### Round 11 (steerwp): `sim/confirm_r11.txt`
+- Remaining zone deaths with the default bot: 10/72 (seeds 1700000+). Trace of seed 1700046: stuck 20+ s
+  in *flat open ground* in "path" mode, swinging left/right. Cause: `_steer` checks 9-14 m ahead along the
+  heading to a waypoint only 2-3 m away; the route turns at the waypoint, so the wall past it makes the
+  steering swerve off the route every tick. The same code runs in the real game.
+- steerwp = when following the flow field, steering looks only as far as the waypoint (+1 m).
+  Seed 1700046: zone death 16th -> killed in a fight 11th.
+- r11 (seeds 1800000+): steerwp 4.89 vs base 4.32, +0.57 ± 0.31 (+1.8 s.e.); zone deaths 61 -> 53.
+- r11b (seeds 1900000+, `sim/confirm_r11b.txt`): 4.57 vs 4.52, +0.05 ± 0.30; zone deaths 63 -> 57.
+- Pooled 768: +0.31 ± 0.22 (+1.4 s.e.), zone deaths 124 -> 110. Under the bar, but a narrow bug fix that only
+  touches route-following, and slots are free, so it goes to a real test (terrain, inflate off).
