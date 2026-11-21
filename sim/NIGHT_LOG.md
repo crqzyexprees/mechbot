@@ -221,10 +221,13 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - `upmag` (pick Drum magazine first: +31% sustained gun damage by the stats) and `holdfire` (no gun fire
   at a target behind a wall, reload instead), `sim/confirm_r15.txt`, 192 fresh matches each, seeds 1010000+:
   base 4.54 ± 0.29, upmag 4.50, holdfire 4.39, both 4.46. None within 1 s.e. of better: not pushed.
-  Both switches are left in the code, off.
+  Both switches were meant to be turned off, but the edit missed: they were ON in e7f1836 and 36b7d70.
 - `lootflip` (loot ranked lightning > laser > mortar, by damage per second) is in the code, on in the
   working tree, uncommitted. The sim has no loot weapons, so only a real submission can test it.
 - Real: BB-A3FFDA23, e7f1836 (lootflip on top of the 3.98 version): **4.15**, new best, entered in the
-  final. +0.17 over 3.98 for the loot order alone. Team rank 109 of 252 at 4.15.
+  final. CORRECTION: e7f1836 also had upmag and holdfire on, so the +0.17 over 3.98 is the three together. Team rank 109 of 252 at 4.15.
 - `arcsave`: in a lightning fight (target within lightning range + 10 m) no dodge boosts, and lightning
   fires down to 3 energy (15 while zone-boosting) instead of stopping at 30. Real-only (no lightning in the sim).
+- Real: BB-259E4208, 36b7d70 (e7f1836 + arcsave): **3.71**, -0.44. Dodge boosts and the 30-energy floor
+  matter in lightning fights. arcsave off.
+- `lootfar2`: walk up to 100 m (was 40) for lightning or a laser when no enemy is within 80 m, any time.

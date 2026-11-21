@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave"}
 
 
 def flag(name):
@@ -1122,7 +1122,8 @@ class Bot:
                     act["drop"] = 1
                 act["take"] = p["id"]
                 break
-            if loot_goal is None and dh < (120 if flag("lootfar") and t < 150 else 40) and not foes_close:
+            far = 120 if flag("lootfar") and t < 150 else 100 if flag("lootfar2") and k in ("lightning", "laser") else 40
+            if loot_goal is None and dh < far and not foes_close:
                 loot_goal = (p["pos"][0], p["pos"][1])
 
         # ---- cubes: each one is +4% HP and damage (cap 10) and an upgrade at 1/3/6/10; kills drop them ----
