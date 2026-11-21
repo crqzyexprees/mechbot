@@ -283,3 +283,6 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Real: BB-760245D5, ed9e70d (4.42 version + laserblend): **4.27**, -0.15 (about noise, not better). Off.
   main is back to the 4.42 behaviour.
 - Real test: reloadduck on the 4.42 version (only difference).
+- Real: BB-6A750ED7, 7f3176e (4.42 version + reloadduck): **4.27**, same as laserblend. Two different small
+  changes both at 4.27 suggests the 4.42 version's own level is nearer 4.3 and 4.42 was partly a good run
+  (same-commit reruns earlier differed by 0.14). reloadduck off; main = 4.42 behaviour.
