@@ -244,3 +244,5 @@ game mechanics the sim models faithfully, and judge real results on more than on
   0.5 44.3 / 51.3%. Score, 192 fresh matches (`sim/confirm_r16.txt`): 0.7 lead 5.29 ± 0.33 vs full 4.38 ± 0.29,
   +0.92 ± 0.44 (+2.1 s.e.); 0.85 +0.39 (0.9 s.e.). lead70 on. Caveat: the sim's house bots strafe with
   our old code (turning every 0.45-1.1 s); the real ones may move differently.
+- Real: BB-4F3F2254, a0d7583 (4.15 version + lead70): **3.79**, -0.36. The sim's strafing house bots
+  wanted less lead; the real ones evidently do not. lead70 off: back to the 4.15 behaviour.
