@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "laserblend", "tol6", "gatehv", "gatehv2"}
 
 
 def flag(name):
@@ -102,6 +102,13 @@ def _aimed(me, yaw, pitch, dist, tol_m):
     """Is our *actual* (slewed) torso aim within tol_m metres of the wanted line at that range?"""
     err = max(abs(_angdiff(me["aim"][0], yaw)), abs(me["aim"][1] - pitch))
     return err * max(dist, 1.0) < tol_m
+
+
+def _aimed_hv(me, yaw, pitch, dist, tol_h, tol_v):
+    """Like _aimed, with separate side-to-side and up-down tolerances: a mech is a 9 m tall,
+    5 m wide cylinder, so the shot can be off further vertically and still hit."""
+    d = max(dist, 1.0)
+    return abs(_angdiff(me["aim"][0], yaw)) * d < tol_h and abs(me["aim"][1] - pitch) * d < tol_v
 
 
 def _mortar_pitch(R, h, v, g, high):
@@ -961,7 +968,7 @@ class Bot:
         W = {k: me["weapons"][i] for k, i in slots.items()}
         if "gun" in W:  # top the magazine up while nobody is around
             g = W["gun"]
-            if not enemies and (g.get("reload") or 0) == 0 and (g.get("ammo") or 0) < g["stats"]["mag"] * 0.5:
+            if not enemies and (g.get("reload") or 0) == 0 and (g.get("ammo") or 0) < g["stats"]["mag"] * (1.0 if flag("topup") else 0.5):
                 act["reload"] = True
         if not enemies:
             return None  # a laser mid-charge is released here: it fires off and starts cooling down
@@ -969,13 +976,14 @@ class Bot:
         tp = tgt["pos"]
         d = math.dist(tp[:2], (x, y))
         aim, tag = None, ""
+        blend_hold = False
         # holdfire: memory reports mechs behind walls for 5 s; bullets into a wall only empty the
         # magazine, so hold the gun and reload while the target is hidden
         blind = (flag("holdfire") and self.grid is not None and abs(tp[2] - z) < 4
                  and not self.grid.los(x, y, tp[0], tp[1]))
         if blind and "gun" in W:
             g = W["gun"]
-            if (g.get("reload") or 0) == 0 and (g.get("ammo") or 0) < g["stats"]["mag"] * 0.7:
+            if (g.get("reload") or 0) == 0 and (g.get("ammo") or 0) < g["stats"]["mag"] * (0.9 if flag("topup") else 0.7):
                 act["reload"] = True
 
         def laser_target(rng):  # laser cooks off mortar carriers (+60%): prefer them
@@ -989,8 +997,11 @@ class Bot:
             ch = L.get("charge") or 0
             if ch > 0:
                 lyaw, lpitch, ld = _lead(me, laser_target(st["range"]), 1e9)
-                aim, tag = (lyaw, lpitch), "laser"
                 fire[slots["laser"]] = not (ch >= st["charge"] and _aimed(me, lyaw, lpitch, ld, 2.0))
+                if flag("laserblend") and "gun" in W and ch < st["charge"] - 0.1:
+                    blend_hold = True  # gun block below takes the aim; the trigger stays held
+                else:
+                    aim, tag = (lyaw, lpitch), "laser"
 
         # lightning: point at anyone inside arc range; it fires whenever the cone holds the target
         if "lightning" in W:
@@ -1017,7 +1028,7 @@ class Bot:
                     fire[slots["mortar"]] = True
 
         # laser: start a charge only when slowing to half speed is safe
-        if aim is None and "laser" in W and safe_to_charge:
+        if aim is None and "laser" in W and safe_to_charge and not blend_hold:
             L = W["laser"]
             st = L["stats"]
             if L["cooldown"] <= 0 and d < st["range"] * 0.95:
@@ -1070,9 +1081,15 @@ class Bot:
                             if self.grid.shot_clear(ox, oy, z + mh, math.atan2(tp[1] - oy, tp[0] - ox), gpitch, reach_):
                                 self.peek = (nx_ * side, ny_ * side, self.t_now + 0.6)
                                 break
-            tol = 2.0 if flag("tol2") else 4.0 if flag("tol4") else 3.2 if flag("tol3") else 2.5
+            tol = (2.0 if flag("tol2") else 6.0 if flag("tol6") else 5.0 if flag("tol5") else 4.0 if flag("tol4")
+                   else 2.8 if flag("tol28") else 3.6 if flag("tol36")
+                   else 3.2 if flag("tol3") else 2.5)
             far_ok = not (flag("farhold") and gd > 150 and math.hypot(*tgt["vel"][:2]) > 3.0)
-            if gd < st["range"] and _aimed(me, gyaw, gpitch, gd, tol) and not blind and far_ok:
+            if flag("gatehv") or flag("gatehv2"):
+                on = _aimed_hv(me, gyaw, gpitch, gd, 3.2 if flag("gatehv") else 4.0, 4.0 if flag("gatehv") else 4.5)
+            else:
+                on = _aimed(me, gyaw, gpitch, gd, tol)
+            if gd < st["range"] and on and not blind and far_ok:
                 fire[slots["gun"]] = True
 
         if aim is None:

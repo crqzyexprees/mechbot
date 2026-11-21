@@ -264,3 +264,14 @@ game mechanics the sim models faithfully, and judge real results on more than on
   Neutral or worse: peekreload, tol2, farhold, aimsize, upservo, dodge25, holdlead, strafe2, aimlat.
 - Real: BB-92DD517F, 70e5d61 (4.15 version + tol3 + muzzlecheck + peekstep): **4.42**, new best (+0.27),
   entered in the final. First sim-picked change to win for real since the calibration and repeatable sim.
+
+## Fire gate tuning, reload top-up, laser blend
+
+- Paired screens (`sim/pair_r7-r10.txt`), gate = how far the actual aim may be from the lead point:
+  2.8 m about 0; 3.6 m +0.60 ± 0.42; 4 m +1.05, -0.28, +0.64 (pooled +0.48 ± 0.21); 5 m +0.85, +1.17
+  ± 0.31, +0.35 (pooled +0.79 ± 0.21); 6 m -0.07. Hit rate goes up slightly, not down.
+- Separate gates: 3.2 m sideways + 4.0 m vertical is identical to 3.2 m, so the vertical limit never
+  binds; the gain is all sideways. tol5 on.
+- topup (reload whenever a round is missing with nobody around, under 90% behind cover): -0.10 ± 0.34. Off.
+- laserblend (keep the gun firing on its own lead while the laser charges; swing to the beam line for
+  the last 0.1 s): real-only (no laser in the sim). In the code, off.

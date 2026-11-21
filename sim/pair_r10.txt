@@ -1,0 +1,10 @@
+=== paired, 192 seeds from 2800000 (400 s), house bots: cur
+                       score   hit %  cover %  dealt/match  taken/match  life s
+  base           5.79 ± 0.33    55.0      5.2        11072         1661     295
+  tol5           6.14 ± 0.33    55.5      6.3        11380         1730     296
+  gatehv         5.79 ± 0.33    55.0      5.1        11058         1657     294
+  gatehv2        6.39 ± 0.34    55.9      5.3        11530         1730     296
+  differences vs base, same seeds (± = paired standard error):
+  tol5         score +0.35 ± 0.33    hit  +0.6 ± 0.7    dealt   +308 ±  305    taken    +70 ±   59
+  gatehv       score -0.01 ± 0.01    hit  -0.0 ± 0.1    dealt    -14 ±    9    taken     -4 ±    4
+  gatehv2      score +0.59 ± 0.31    hit  +1.2 ± 0.6  * dealt   +458 ±  252    taken    +69 ±   53
