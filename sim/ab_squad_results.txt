@@ -1,0 +1,6 @@
+=== practice format, 192 matches, seed 7
+  v1 (submitted)                 score 2.60 (+/- 0.17 s.e.)   kills 2.36  median death 34 zone / 307 s maxms 13.2
+  v2 all on                      score 0.77 (+/- 0.14 s.e.)   kills 0.55  median death 32 zone / 310 s maxms 19.3
+  v2 aggressive (cautious off)   score 2.82 (+/- 0.18 s.e.)   kills 2.56  median death 33 zone / 302 s maxms 24.3
+/usr/lib64/python3.15/multiprocessing/resource_tracker.py:475: UserWarning: resource_tracker: There appear to be 6 leaked semaphore objects to clean up at shutdown: {'/mp-b2oeqh2e', '/mp-4fpogxrh', '/mp-xxx8kmb1', '/mp-qf0n34uh', '/mp-1kbh8y27', '/mp-3extoxkm'}
+  warnings.warn(

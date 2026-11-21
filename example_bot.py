@@ -30,6 +30,24 @@ CELL = 2.0  # obstacle grid resolution, meters
 FIELD_SLICE_S = 0.010  # wall time per tick spent building the zone flow field
 NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 
+# Behaviour switches. In a real match nothing sets SPEEDY_OFF, so the tuned default below applies:
+# the cautious behaviours (hold fire, never chase, hide, cover, flee when outnumbered) cost kills in
+# the practice format, where placement is decided by how many house bots you take down. The local
+# simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
+_OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
+if "SPEEDY_OFF" not in os.environ:
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide"}
+
+
+def flag(name):
+    return name not in _OFF
+
+
+def _clip_back(vx, vy, gx, gy):
+    """Remove the part of (vx, vy) that points against the unit goal direction (gx, gy)."""
+    d = vx * gx + vy * gy
+    return (vx - d * gx, vy - d * gy) if d < 0 else (vx, vy)
+
 
 # --------------------------------------------------------------------------------------------
 # small vector helpers (2D unless stated)
@@ -163,6 +181,20 @@ class ObstacleGrid:
             if top > z + self.step_up and base < z + self.height:
                 return True
         return False
+
+    def los(self, ax, ay, bx, by, step=2.0):
+        """Street-level line of sight: no solid cell between (ax, ay) and (bx, by). Walks from b
+        toward a, since a spot hidden behind a wall usually has that wall right next to it."""
+        dx, dy = ax - bx, ay - by
+        n = int(math.hypot(dx, dy) / step)
+        sol, nx_, x0, y0 = self.solid, self.nx, self.x0, self.y0
+        for k in range(1, n):
+            f = k / n
+            px, py = bx + dx * f, by + dy * f
+            i, j = int((px - x0) / CELL), int((py - y0) / CELL)
+            if 0 <= i < self.nx and 0 <= j < self.ny and sol[j * nx_ + i]:
+                return False
+        return True
 
     def clear_dist(self, x, y, z, dx, dy, reach, radius):
         """How far (up to `reach`) the body can travel along unit (dx, dy) before hitting a cell."""
@@ -344,6 +376,14 @@ class Bot:
         self.threat = None        # (bearing, until): heard shooting we can't see
         self.concuss_until = 0.0
         self.enemy_reload_until = 0.0
+        self.attackers = {}       # mech id -> last time it damaged us
+        self.cover = None         # ((x, y) or None, zone key): a quiet spot next to a wall
+        self.cover_t = -99.0
+        self.hide = None          # (x, y) of a spot the current threats can't see
+        self.hide_t = -99.0
+        self.hiding_until = 0.0
+        self.tgt_id = None        # current weapons target, kept briefly while still shootable
+        self.tgt_since = -99.0
 
     # ---------------------------------------------------------------------------- zone model
     def _zone_at(self, zone, t_now, tau):
@@ -419,7 +459,7 @@ class Bot:
             step = min(tau, eta) * speed
             qx, qy = x + dx * step, y + dy * step
             cx, cy, r = self._zone_at(zone, t, t + tau)
-            if math.hypot(qx - cx, qy - cy) > r - self.radius - 2.0:
+            if math.hypot(qx - cx, qy - cy) > r - self.radius - 2.0 - (10.0 if flag("zonefix") else 0.0):
                 return True
             tau += 0.5
         return False
@@ -597,6 +637,91 @@ class Bot:
         self.detour = (t + dur, hx, hy, repeats)
         self.hist.clear()
 
+    # ---------------------------------------------------------------------------- cover
+    def _cover_spot(self, t, x, y, zone):
+        """Nearest open cell right next to a wall inside the safe disk (within ~30 m), refreshed
+        every few seconds. Somewhere to wait out the phase that can't be seen from every side."""
+        if self.grid is None:
+            return None
+        key = (tuple(zone["next_center"]), zone["next_radius"])
+        if self.cover and self.cover[1] == key and t - self.cover_t < 4.0:
+            return self.cover[0]
+        g, nc, sr = self.grid, zone["next_center"], self._safe_r(zone)
+        k0 = g.cell(x, y)
+        best = None
+        if k0 is not None:
+            j0, i0 = divmod(k0, g.nx)
+            sol = g.solid
+            for dj in range(-15, 16):
+                j = j0 + dj
+                if not 1 <= j < g.ny - 1:
+                    continue
+                for di in range(-15, 16):
+                    i = i0 + di
+                    if not 1 <= i < g.nx - 1:
+                        continue
+                    k = j * g.nx + i
+                    if sol[k] or not (sol[k + 1] or sol[k - 1] or sol[k + g.nx] or sol[k - g.nx]):
+                        continue
+                    cx, cy = g.center(k)
+                    dc = math.hypot(cx - nc[0], cy - nc[1])
+                    if dc > sr:
+                        continue
+                    score = math.hypot(di, dj) * CELL + 0.1 * abs(dc - 0.5 * sr)
+                    if best is None or score < best[0]:
+                        best = (score, cx, cy)
+        self.cover_t = t
+        self.cover = ((best[1], best[2]) if best else None, key)
+        return self.cover[0]
+
+    def _hide_spot(self, t, x, y, threats):
+        """Nearest walkable spot (BFS over the street grid, within ~36 m) that none of `threats`
+        can see: a building between us and them stops their bullets and lets HP regen start.
+        Candidates are cells with open ground all around (room for the body) next to a wall.
+        Cached ~1 s; time-boxed to ~4 ms."""
+        g = self.grid
+        if g is None or not threats:
+            return None
+        if self.hide and t - self.hide_t < 1.0:
+            hx, hy = self.hide
+            if all(not g.los(tx, ty, hx, hy) for tx, ty in threats):
+                return self.hide
+        k0 = g.cell(x, y)
+        if k0 is None:
+            return None
+        nx_, sol = g.nx, g.solid
+        j0, i0 = divmod(k0, nx_)
+        seen = {k0}
+        q = deque([k0])
+        end = time.perf_counter() + 0.004
+        found = None
+        n = 0
+        while q:
+            k = q.popleft()
+            n += 1
+            j, i = divmod(k, nx_)
+            ring = [k + di + dj * nx_ for di, dj in NB8]
+            if n > 1 and not any(sol[r] for r in ring):
+                near_wall = any(sol[k + 2 * di + 2 * dj * nx_] for di, dj in NB8
+                                if 0 <= i + 2 * di < nx_ and 0 <= j + 2 * dj < g.ny)
+                if near_wall:
+                    cx, cy = g.center(k)
+                    if all(not g.los(tx, ty, cx, cy) for tx, ty in threats):
+                        found = (cx, cy)
+                        break
+            if not n & 31 and time.perf_counter() > end:
+                break
+            for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ii, jj = i + di, j + dj
+                if abs(ii - i0) > 18 or abs(jj - j0) > 18 or not (1 <= ii < nx_ - 1 and 1 <= jj < g.ny - 1):
+                    continue
+                nk = jj * nx_ + ii
+                if nk not in seen and not sol[nk]:
+                    seen.add(nk)
+                    q.append(nk)
+        self.hide, self.hide_t = found, t
+        return found
+
     # ---------------------------------------------------------------------------- weapons
     def _mortar_solution(self, me, tgt, st):
         """(yaw, pitch) to land a shell on tgt, leading it by the flight time; None if not possible."""
@@ -771,6 +896,8 @@ class Bot:
 
         # ---- events: unseen attackers (face them: rear hits do 1.5x), concussion ----
         for ev in obs.get("events") or []:
+            if ev["type"] == "damaged" and ev.get("by") is not None:
+                self.attackers[ev["by"]] = t
             if ev["type"] == "damaged" and ev.get("bearing") is not None and ev.get("by") not in seen:
                 self.face = (ev["bearing"], t + 1.5)
             elif ev["type"] == "effect" and ev.get("effect") == "concuss":
@@ -815,7 +942,23 @@ class Bot:
         mode = ("path" if route else "zone") if target is not None else "safe"
         pull = 1.0
         drop_boost = False
-        if drop is not None:
+        # under fire / outnumbered / hurt: break line of sight behind a building
+        hide = None
+        if flag("hide") and not risk and enemies:
+            recent_hit = [m for m in enemies if t - self.attackers.get(m["id"], -99) < 3.0]
+            near = [m for m in enemies if math.dist(m["pos"][:2], (x, y)) < 230]
+            if recent_hit or len(near) >= 2 or (near and me["hp"] < 0.5 * me["max_hp"]):
+                self.hiding_until = t + 4.0
+            if t < self.hiding_until and near:
+                hide = self._hide_spot(t, x, y, [(m["pos"][0], m["pos"][1]) for m in near])
+        if hide is not None:
+            mode = "hide"
+            dh = math.hypot(hide[0] - x, hide[1] - y)
+            gx, gy = _norm(hide[0] - x, hide[1] - y)
+            pull = 1.0 if dh > 2.5 else 0.0
+            drop = None
+            mf.draw.point([hide[0], hide[1], z], "#ff4040", 6)
+        elif drop is not None:
             mode = "drop"
             dpx, dpy = drop["pos"][0], drop["pos"][1]
             dd = math.hypot(dpx - x, dpy - y)
@@ -838,11 +981,20 @@ class Bot:
         elif target is not None:
             gx, gy = _norm(target[0] - x, target[1] - y)
         else:
-            # already safe: drift toward the middle of the next circle, slowly enough to be silent
-            nc = zone["next_center"]
-            dc = math.hypot(nc[0] - x, nc[1] - y)
-            gx, gy = _norm(nc[0] - x, nc[1] - y)
-            pull = 0.0 if dc < zone["next_radius"] * 0.3 else 0.4
+            spot = self._cover_spot(t, x, y, zone) if flag("cover") else None
+            if spot is not None:
+                # already safe: creep (silently, under step_speed) to a wall and wait there
+                mode = "cover"
+                ds = math.hypot(spot[0] - x, spot[1] - y)
+                gx, gy = _norm(spot[0] - x, spot[1] - y)
+                pull = 0.0 if ds < 4.0 else 0.4
+                mf.draw.point([spot[0], spot[1], z], "#a0a0ff", 5)
+            else:
+                # already safe: drift toward the middle of the next circle, slowly enough to be silent
+                nc = zone["next_center"]
+                dc = math.hypot(nc[0] - x, nc[1] - y)
+                gx, gy = _norm(nc[0] - x, nc[1] - y)
+                pull = 0.0 if dc < zone["next_radius"] * 0.3 else 0.4
 
         ddx, ddy, urgency, why = self._dodge(obs, t, x, y, z, vx, vy, slots)
         sx, sy = self._strafe(obs, t, x, y)
@@ -853,11 +1005,27 @@ class Bot:
             f = enemies[0]
             d = math.dist(f["pos"][:2], (x, y))
             want = self._want_range(me, f, slots)
-            if t < self.enemy_reload_until:
+            if t < self.enemy_reload_until and flag("reloadpush"):
                 want *= 0.6
+            if flag("outnumbered") and sum(math.dist(m["pos"][:2], (x, y)) < 150 for m in enemies) >= 2:
+                want = 250.0  # two or more on us: get out, let them fight each other
             ex, ey = _norm(x - f["pos"][0], y - f["pos"][1])
             k = max(-1.0, min(1.0, (want - d) / 60.0))
+            if flag("nochase"):
+                k = max(0.0, k)  # back off or hold, never walk toward a fight
             rcx, rcy = ex * k * 1.2, ey * k * 1.2
+
+        if mode == "hide":
+            sx = sy = rcx = rcy = 0.0
+
+        # travelling to the zone: side moves may not push us backwards; at risk, only sidestep
+        if flag("zonefix") and target is not None and mode in ("path", "zone"):
+            sx, sy = _clip_back(sx, sy, gx, gy)
+            rcx, rcy = _clip_back(rcx, rcy, gx, gy)
+            if risk:
+                sx = sy = rcx = rcy = 0.0
+                along = ddx * gx + ddy * gy
+                ddx, ddy = ddx - along * gx, ddy - along * gy
 
         # blend: zone pull dominates when it is urgent, dodges dominate when a hit is incoming
         zone_w = 2.5 if risk else 1.0
@@ -903,7 +1071,31 @@ class Bot:
         lightning_near = any("lightning" in (m.get("weapons") or []) and math.dist(m["pos"][:2], (x, y)) < 60
                              for m in enemies)
         safe_to_charge = not risk and urgency < 0.5 and not lightning_near and mode != "drop"
-        wtag = self._weapons(me, enemies, slots, act, safe_to_charge)
+        recent = {i for i, tt in self.attackers.items() if t - tt < 4.0}
+        if flag("sticky") and self.grid is not None and enemies:
+            # direct fire needs a clear line: memory keeps reporting mechs behind walls for 5 s
+            clear = {m["id"] for m in enemies if self.grid.los(x, y, m["pos"][0], m["pos"][1])}
+            keep = self.tgt_id in clear and t - self.tgt_since < 1.5
+            wenemies = sorted(enemies, key=lambda m: (not (keep and m["id"] == self.tgt_id), m["id"] not in clear,
+                                                      m["id"] not in recent, math.dist(m["pos"], me["pos"])))
+            if wenemies[0]["id"] != self.tgt_id:
+                self.tgt_id, self.tgt_since = wenemies[0]["id"], t
+            elif not keep:
+                self.tgt_since = t
+        else:
+            wenemies = sorted(enemies, key=lambda m: (m["id"] not in recent, math.dist(m["pos"], me["pos"])))
+        engage = True
+        if flag("discipline") and enemies:
+            e0 = wenemies[0]
+            engage = (obs["alive"] <= 3 or e0["id"] in recent or math.dist(e0["pos"][:2], (x, y)) < 70
+                      or e0.get("hp", 1e9) < 0.35 * e0.get("max_hp", 1.0))
+        wtag = self._weapons(me, wenemies, slots, act, safe_to_charge and engage)
+        if not engage:
+            act["fire"] = [False, False]  # stay quiet: gunfire carries 320 m
+            wtag = "hold"
+        if flag("heal") and mode == "hide" and me["hp"] < 0.35 * me["max_hp"]:
+            act["fire"] = [False, False]  # dealing damage resets the 5 s regen timer too
+            wtag = "heal"
         if wtag is None:  # nothing to shoot: look where it matters
             if self.face and t < self.face[1]:
                 act["aim"] = [self.face[0], 0.0]

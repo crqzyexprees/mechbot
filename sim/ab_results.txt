@@ -1,0 +1,4 @@
+=== opponents: v1
+  v1 (submitted)             score 8.03 (+/- 0.23 s.e.)   place 8.0   died 354/384 zone:50 maxms 11.9
+/usr/lib64/python3.15/multiprocessing/resource_tracker.py:475: UserWarning: resource_tracker: There appear to be 6 leaked semaphore objects to clean up at shutdown: {'/mp-nnaigbv7', '/mp-a4ayjxyz', '/mp-mam2epj3', '/mp-90uwul59', '/mp-jjuxo6k8', '/mp-_se2ylj0'}
+  warnings.warn(
