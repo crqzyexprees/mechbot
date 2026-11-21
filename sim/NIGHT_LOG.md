@@ -20,7 +20,8 @@ than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) rea
 
 | BB-FC832A13 | 379f5bf | U: A + damage-first upgrades (uppower) | about +0.40 ± 0.14 over A (1152 each) | 3.52 (A: 3.56, 3.42) |
 | BB-2B482130 | ed981aa | U + crates + seek | +0.30 ± 0.30 over U (384 each) | **3.96** (best, +0.44) |
-| next | lootfar | ed981aa + walk up to 120 m for ground weapons in the first 150 s | (sim has no loot) | real test |
+| BB-CDBDE7C4 | b5900fa | ed981aa + lootfar: walk up to 120 m for ground weapons in the first 150 s | (sim has no loot) | 3.73 (worse, off) |
+| next | drones | ed981aa + snipe NPC drones for cubes | (sim has no NPCs) | real test |
 
 ### Change of method (03:55)
 Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
@@ -98,3 +99,10 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Upgrades make every cube worth more, so re-testing crates and seek (both neutral/borderline before).
 - 384 fresh each: U 4.12 ± 0.21, U+crates 4.16, U+seek 4.17, U+crates+seek 4.42 ± 0.21 (+0.30 ± 0.30, 1.0 s.e.).
   Cubes held 4.6 -> 5.6 with both. No regression, so U+crates+seek goes to a real test.
+
+### Real-only candidates (the sim has no NPCs or weapon pickups)
+- lootfar (b5900fa, scoring).
+- drones (in the working copy, off): when no enemy mech is in sight, snipe NPC drones (350 HP, 2 cubes
+  each, 12 per match) from 70-200 m, where their 2.5-degree-spread bullets mostly miss; keep shooting the
+  current one down to 20 m; cube pickup range 130 m with it on. Unit-tested on a real observation with an
+  injected drone: it targets, leads and fires once aimed.

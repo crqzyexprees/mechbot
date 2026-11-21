@@ -36,7 +36,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar"}
 
 
 def flag(name):
@@ -392,6 +392,7 @@ class Bot:
         self.regroup = False      # healing up between fights (after a kill, or hurt with nobody on us)
         self.heard = None         # (bearing, t) of the latest fight noise, for seek
         self.crate_id = None      # crate we're shooting open for its cube
+        self.drone_id = None      # NPC drone we're sniping for its 2 cubes
         self.tgt_since = -99.0
 
     # ---------------------------------------------------------------------------- zone model
@@ -947,7 +948,7 @@ class Bot:
             best = None
             for c in obs.get("cubes") or []:
                 dh = math.dist(c["pos"][:2], (x, y))
-                if dh < 70 and abs(c["pos"][2] - z) < 4 and (best is None or dh < best[0]):
+                if dh < (130 if flag("drones") else 70) and abs(c["pos"][2] - z) < 4 and (best is None or dh < best[0]):
                     best = (dh, c["pos"][0], c["pos"][1])
             if best is not None:
                 cube_goal = best[1:]
@@ -1157,6 +1158,36 @@ class Bot:
         if flag("heal") and mode == "hide" and me["hp"] < 0.35 * me["max_hp"]:
             act["fire"] = [False, False]  # dealing damage resets the 5 s regen timer too
             wtag = "heal"
+        # nobody in sight: snipe NPC drones (350 HP, 2 cubes) from beyond their 45-60 m home range,
+        # where their 2.5-degree-spread bullets mostly miss and our 0.6-degree gun doesn't
+        if wtag is None and flag("drones") and not enemies and not risk and mode not in ("hide", "regroup"):
+            gun = me["weapons"][0]
+            mh = me["stats"].get("muzzle_height", 7.0)
+            best = None
+            for m in obs["mechs"]:
+                if m["kind"] != "npc":
+                    continue
+                d = math.hypot(m["pos"][0] - x, m["pos"][1] - y)
+                cur = m["id"] == self.drone_id
+                if d > 200 or d < (20 if cur else 70) or abs(m["pos"][2] - z) > 12:
+                    continue
+                if self.grid is not None and not self.grid.los(x, y, m["pos"][0], m["pos"][1]):
+                    continue
+                key = (not cur, d)
+                if best is None or key < best[0]:
+                    best = (key, m, d)
+            if best is not None and gun and gun.get("ammo", 0) > 0 and not gun.get("reload"):
+                _, m, d = best
+                self.drone_id = m["id"]
+                tf = d / max(gun["stats"].get("speed", 252.0), 1.0)
+                vx_, vy_ = (m.get("vel") or [0, 0, 0])[:2]
+                px, py = m["pos"][0] + vx_ * tf, m["pos"][1] + vy_ * tf
+                yaw = math.atan2(py - y, px - x)
+                pitch = math.atan2(m["pos"][2] + 1.75 - (z + mh), max(d, 1.0))
+                act["aim"] = [yaw, pitch]
+                act["fire"] = [_aimed(me, yaw, pitch, d, 1.2), False]
+                wtag = "drone"
+                mf.draw.line([x, y, z + mh], [px, py, m["pos"][2] + 1.75], "#ff40ff")
         # nobody in sight: shoot open a reachable crate (300 HP = 7 shots) for its cube and maybe a weapon
         if wtag is None and flag("crates") and not enemies and mode not in ("hide", "regroup"):
             gun = me["weapons"][0]
