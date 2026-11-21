@@ -26,7 +26,8 @@ than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) rea
 | BB-491F2EED | eac4376 | 2e8d5c2 + terrain-aware walls + radius-aware routes | neutral, fewer zone deaths | 3.77 (worse, both off) |
 | BB-6F48C004 | 2025b71 | 2e8d5c2 + steering looks only as far as the route waypoint | +0.31 ± 0.22 (sim, 768) | 3.98 (neutral; kept, correct fix) |
 | BB-2D784B26 | a80dbe0 | 2025b71 + regroup: heal to 85% out of sight between fights | +0.04 ± 0.32 (sim) | 3.79 (worse than 3.98, off) |
-| next | hunt | 2025b71 + hunt: walk to the last-seen enemy when healthy and idle | +0.40 ± 0.29 (sim) | real test |
+| BB-5D0464CB | 36e24d0 | 2025b71 + hunt: walk to the last-seen enemy when healthy and idle | +0.40 ± 0.29 (sim) | 3.73 (off) |
+| next | roof | 2025b71 + roof: climb a roof inside the next circle and fight from it | sim can't model roofs | real test |
 
 ### Change of method (03:55)
 Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
@@ -192,3 +193,17 @@ game mechanics the sim models faithfully, and judge real results on more than on
   safely inside the next circle (seek only follows sounds < 8 s old).
 - 384 fresh: hunt 4.68 vs base 4.28, +0.40 ± 0.29 (+1.4 s.e.); kills 3.61 -> 3.81; zone deaths 66 -> 59.
 - Real test on 2025b71 (regroup off).
+- Round 14 (`sim/confirm_r14.txt`, seeds 2300000+): hunt 4.44, hunt2 4.44, no hunt 4.45: no gain on fresh seeds.
+- Real: 36e24d0 (hunt) 3.73. Off.
+
+## Change of tack (07:00)
+- Since 2e8d5c2 (4.06) six real tests scored 3.73-3.98 (mean ~3.88): behaviour tweaks are inside scorer noise,
+  and the sim (no roofs, jumping, jets, loot, extra weapons, NPCs; house bots = our old versions) cannot rank them.
+- roof = structural bet. With no enemy within 120 m and no zone risk, pick the nearest flat roof (6-48 m up,
+  >= 8 m from edge to middle) safely inside the next circle; walk until the straight line to it meets that
+  building first, then hop and jet up (energy check first), and hold the middle of the roof. Fight from there
+  (edge clamp keeps us on it); come down for cubes, loot, drops or the zone. A climb not done in 25 s marks
+  that roof bad for 90 s.
+- Kinematic harness (`sim/climb_test.py`: one mech, protocol jump/jet/energy numbers, walls from the grid):
+  13 of 20 random roofs reached and held, usually in 3-5 s.
+- The flat sim can only show the cost (climbs always fail there): 3.75 on 96 matches. Real test decides.

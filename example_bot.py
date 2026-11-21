@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2"}
 
 
 def flag(name):
@@ -248,13 +248,64 @@ class ObstacleGrid:
         return reach
 
 
+def _pip(px, py, ring):
+    """Point in polygon (flat [x0, y0, x1, y1, ...] ring), even-odd rule."""
+    n, inside = len(ring) // 2, False
+    j = n - 1
+    for i in range(n):
+        xi, yi, xj, yj = ring[2 * i], ring[2 * i + 1], ring[2 * j], ring[2 * j + 1]
+        if (yi > py) != (yj > py) and px < (xj - xi) * (py - yi) / (yj - yi) + xi:
+            inside = not inside
+        j = i
+    return inside
+
+
+def _find_roofs(world, g):
+    """Flat building roofs we can jet onto: (cx, cy, top, ring, inner) with (cx, cy) a point well inside
+    the roof and `inner` its distance to the nearest edge."""
+    roofs = []
+    for p in world.get("prisms", []):
+        if p.get("kind") != "building" or p.get("holes"):
+            continue
+        ring = p["ring"]
+        n = len(ring) // 2
+        if n < 3:
+            continue
+        a = cx = cy = 0.0
+        for i in range(n):
+            x0, y0, x1, y1 = ring[2 * i], ring[2 * i + 1], ring[2 * ((i + 1) % n)], ring[2 * ((i + 1) % n) + 1]
+            c = x0 * y1 - x1 * y0
+            a += c
+            cx += (x0 + x1) * c
+            cy += (y0 + y1) * c
+        if abs(a) < 1e-6:
+            continue
+        cx, cy, area = cx / (3 * a), cy / (3 * a), abs(a) / 2
+        if area < 400 or not _pip(cx, cy, ring):
+            continue
+        ground = min(g.ground(ring[2 * i], ring[2 * i + 1]) for i in range(n))
+        h = p["top"] - max(ground, p["base"])
+        if not 6.0 <= h <= 48.0:
+            continue
+        inner = 1e9  # distance from the centroid to the nearest edge
+        for i in range(n):
+            x0, y0, x1, y1 = ring[2 * i], ring[2 * i + 1], ring[2 * ((i + 1) % n)], ring[2 * ((i + 1) % n) + 1]
+            dx, dy = x1 - x0, y1 - y0
+            L2 = dx * dx + dy * dy or 1e-9
+            u = max(0.0, min(1.0, ((cx - x0) * dx + (cy - y0) * dy) / L2))
+            inner = min(inner, math.hypot(cx - x0 - u * dx, cy - y0 - u * dy))
+        if inner >= 8.0:
+            roofs.append((cx, cy, float(p["top"]), ring, inner))
+    return roofs
+
+
 def _load_grid(hello, mech):
     try:
         d = hello["map"]["dir"]
         with open(os.path.join(d, "v2", "world.json")) as f:
             world = json.load(f)
         terrain = None
-        if flag("terrain"):
+        if True:
             try:
                 t = world["terrain"]
                 h = array("h")
@@ -265,7 +316,9 @@ def _load_grid(hello, mech):
                 terrain = (t["minX"], t["minY"], t["step"], t["nx"], t["ny"], h)
             except Exception as e:
                 mf.log(f"no terrain ({e!r})")
-        g = ObstacleGrid(world, mech.get("step_up", 1.2), mech.get("height", 9), terrain)
+        g = ObstacleGrid(world, mech.get("step_up", 1.2), mech.get("height", 9), terrain if flag("terrain") else None)
+        g.terrain = terrain  # ground heights for roofs even when walls ignore them
+        g.roofs = _find_roofs(world, g)
         if flag("inflate"):
             g.walk_mask()  # build it now, inside the hello budget, not on a 50 ms tick
         mf.log(f"obstacle grid: {len(g.cells)} cells")
@@ -441,6 +494,9 @@ class Bot:
         self.regroup = False      # healing up between fights (after a kill, or hurt with nobody on us)
         self.heard = None         # (bearing, t) of the latest fight noise, for seek
         self.last_seen = {}       # enemy id -> (x, y, t) of its last sighting, for hunt
+        self.roof = None          # roof we're climbing to / standing on (from grid.roofs)
+        self.roof_since = 0.0     # when we started heading for it
+        self.roof_bad = {}        # roof index -> t until which we don't retry it
         self.crate_id = None      # crate we're shooting open for its cube
         self.drone_id = None      # NPC drone we're sniping for its 2 cubes
         self.tgt_since = -99.0
@@ -666,6 +722,68 @@ class Bot:
             return dx, dy  # boxed in: let the wall slide do its thing, stuck logic will kick in
         self.steer_side = best[2]
         return best[0], best[1]
+
+    def _roof_line_clear(self, x, y, rx, ry, ring):
+        """True if the first wall on the straight line from us to the roof's middle is that building's own."""
+        g = self.grid
+        d = math.hypot(rx - x, ry - y)
+        if d < 1e-6:
+            return True
+        ux, uy = (rx - x) / d, (ry - y) / d
+        s_ = 1.0
+        while s_ < d:
+            px, py = x + ux * s_, y + uy * s_
+            c = g.cell(px, py)
+            if c is not None and g.solid[c]:
+                # wall cells straddle the outline: judge by a point just past it
+                qx, qy = x + ux * min(d, s_ + 3.0), y + uy * min(d, s_ + 3.0)
+                return _pip(qx, qy, ring)
+            s_ += 1.0
+        return True
+
+    def _roof_plan(self, t, x, y, z, zone, risk, enemies, mode):
+        """'roof' while standing on our roof, 'climb' while getting onto it, else None."""
+        roofs = self.grid.roofs
+        nc, nr = zone["next_center"], zone["next_radius"]
+        cur = self.roof
+        if cur is not None:
+            rx, ry, rtop, ring, inner = roofs[cur]
+            on = z > rtop - 1.0 and _pip(x, y, ring)
+            if math.hypot(rx - nc[0], ry - nc[1]) + inner * 0.5 > nr - 10 or (risk and not on):
+                self.roof = None  # the zone is leaving it (or we must run): drop the plan
+                return None
+            if mode in ("cube", "loot", "drop"):
+                self.roof = None  # cubes, weapons and drops are worth coming down for
+                return None
+            if on:
+                return "roof"
+            if t - self.roof_since > 25.0:
+                self.roof_bad[cur] = t + 90.0  # couldn't get up: try another one later
+                self.roof = None
+                return None
+            if mode in ("safe", "cover", "seek", "hunt", "path", "zone") and not any(
+                    math.dist(m["pos"][:2], (x, y)) < 60 for m in enemies):
+                if z > 2.0 + self.grid.ground(x, y) or self._roof_line_clear(x, y, rx, ry, ring):
+                    return "climb"  # airborne: keep going
+                return "approach"
+            return None
+        if risk or mode not in ("safe", "cover", "seek", "hunt") or any(
+                math.dist(m["pos"][:2], (x, y)) < 120 for m in enemies):
+            return None
+        best = None
+        for i, (rx, ry, rtop, ring, inner) in enumerate(roofs):
+            if self.roof_bad.get(i, 0.0) > t or rtop - z > 48.0:
+                continue
+            if math.hypot(rx - nc[0], ry - nc[1]) + inner * 0.5 > nr - 25:
+                continue
+            d = math.hypot(rx - x, ry - y)
+            if d < 140 and (best is None or d < best[0]):
+                best = (d, i)
+        if best is None:
+            return None
+        self.roof, self.roof_since = best[1], t
+        rx, ry, _, ring, _ = roofs[best[1]]
+        return "climb" if self._roof_line_clear(x, y, rx, ry, ring) else "approach"
 
     def _update_stuck(self, t, x, y, want, dx, dy, z, walk):
         """Detect 'trying to move, not moving' and start a committed sideways detour."""
@@ -1106,12 +1224,13 @@ class Bot:
         # enemy was last seen (within 30 s) if that spot is safely inside the next circle
         for m in enemies:
             self.last_seen[m["id"]] = (m["pos"][0], m["pos"][1], t)
+        hunt_hp, hunt_age = (0.5, 60.0) if flag("hunt2") else (0.7, 30.0)
         if (flag("hunt") and mode in ("safe", "cover") and not enemies
-                and me["hp"] >= 0.7 * me["max_hp"]):
+                and me["hp"] >= hunt_hp * me["max_hp"]):
             nc = zone["next_center"]
             best = None
             for eid, (ex, ey, et) in list(self.last_seen.items()):
-                if t - et > 30.0:
+                if t - et > hunt_age:
                     del self.last_seen[eid]
                     continue
                 d = math.hypot(ex - x, ey - y)
@@ -1134,6 +1253,17 @@ class Bot:
                     mode = "crate"
                     gx, gy = _norm(best[1] - x, best[2] - y)
                     pull = 1.0
+
+        # roof: fight from a rooftop inside the next circle (ground mechs need line of sight up to us)
+        roof_state = None
+        if flag("roof") and self.grid is not None and getattr(self.grid, "roofs", None):
+            roof_state = self._roof_plan(t, x, y, z, zone, risk, enemies, mode)
+            if roof_state is not None:
+                mode = roof_state
+                rx, ry, _, _, rin = self.grid.roofs[self.roof]
+                dr = math.hypot(rx - x, ry - y)
+                gx, gy = _norm(rx - x, ry - y) if dr > 1e-6 else (0.0, 0.0)
+                pull = 1.0 if roof_state == "climb" or dr > 0.4 * rin else 0.0
 
         ddx, ddy, urgency, why = self._dodge(obs, t, x, y, z, vx, vy, slots)
         sx, sy = self._strafe(obs, t, x, y)
@@ -1199,6 +1329,27 @@ class Bot:
                     reach = max(2.0, min(reach, wp_d + 1.0))
                 hx, hy = self._steer(x, y, z, hx, hy, reach)
             self._update_stuck(t, x, y, mag, hx, hy, z, walk)
+
+        if roof_state is not None:
+            rx, ry, rtop, rring, _ = self.grid.roofs[self.roof]
+            if roof_state == "climb":
+                # straight at the roof's middle: press into the wall, hop, then jet until our feet clear it
+                self.detour = None
+                self.hist.clear()
+                hx, hy = _norm(rx - x, ry - y)
+                mag = 1.0
+                need = (rtop - z) / 10.0 * 15.0 + 25.0  # jet drain 15/s at 10 m/s rise, plus margin
+                near_wall = self.grid.clear_dist(x, y, z, hx, hy, 6.0, self.radius) < 4.5
+                if grounded and near_wall and energy < need:
+                    mag = 0.0  # wait for energy at the wall foot
+                elif grounded and near_wall:
+                    jump = True
+                elif not grounded and z < rtop + 0.8 and energy > 2:
+                    boost_climb = True
+            elif roof_state == "roof":  # on the roof: never step off the edge
+                if mag > 0.05 and not _pip(x + hx * 5.0, y + hy * 5.0, rring):
+                    hx, hy = _norm(rx - x, ry - y)
+                    mag = 0.6 if math.hypot(rx - x, ry - y) > 2.0 else 0.0
 
         # boost: zone first, then urgent dodges and drop races (keeping a reserve for the zone)
         if risk and energy > (2 if outside else 15):

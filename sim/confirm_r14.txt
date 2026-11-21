@@ -1,0 +1,10 @@
+
+=== confirm, 384 fresh matches each, seeds 2300000+ (637 s)
+  nohunt                           score  4.45 ± 0.22  kills 3.59  median death   301 s  worst tick 14.4 ms  (n=384)
+  hunt                             score  4.44 ± 0.21  kills 3.62  median death   301 s  worst tick 14.5 ms  (n=384)
+  hunt2                            score  4.44 ± 0.21  kills 3.62  median death   302 s  worst tick 14.5 ms  (n=384)
+  hunt                             mean cubes held at end 5.91  zone deaths 57/384
+  hunt2                            mean cubes held at end 5.90  zone deaths 56/384
+  nohunt                           mean cubes held at end 5.81  zone deaths 56/384
+  hunt2 - hunt = -0.01 ± 0.30  (-0.0 s.e.)  not clearly better
+  nohunt - hunt = +0.01 ± 0.30  (+0.0 s.e.)  not clearly better
