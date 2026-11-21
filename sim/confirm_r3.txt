@@ -1,0 +1,16 @@
+
+=== confirm, 192 fresh matches each, seeds 950000+ (429 s)
+  cubes                            score  4.05 ± 0.26  kills 3.49  median death   301 s  worst tick 13.4 ms  (n=192)
+  cubes+seek                       score  4.03 ± 0.24  kills 3.61  median death   301 s  worst tick 14.5 ms  (n=192)
+  cubes+seek+regroup               score  3.79 ± 0.21  kills 3.54  median death   302 s  worst tick 15.3 ms  (n=192)
+  seek                             score  3.78 ± 0.22  kills 3.45  median death   301 s  worst tick 12.7 ms  (n=192)
+  pushed2                          score  3.31 ± 0.18  kills 3.20  median death   301 s  worst tick 14.0 ms  (n=192)
+  pushed2                          mean cubes held at end 0.75
+  cubes                            mean cubes held at end 4.06
+  seek                             mean cubes held at end 1.06
+  cubes+seek                       mean cubes held at end 4.54
+  cubes+seek+regroup               mean cubes held at end 4.48
+  cubes - pushed2 = +0.74 ± 0.32  (+2.3 s.e.)  BETTER
+  seek - pushed2 = +0.46 ± 0.28  (+1.6 s.e.)  not clearly better
+  cubes+seek - pushed2 = +0.72 ± 0.30  (+2.4 s.e.)  BETTER
+  cubes+seek+regroup - pushed2 = +0.48 ± 0.27  (+1.7 s.e.)  not clearly better

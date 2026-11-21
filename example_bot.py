@@ -36,7 +36,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "seek", "focus", "strafe2"}
 
 
 def flag(name):
@@ -384,6 +384,7 @@ class Bot:
         self.hiding_until = 0.0
         self.tgt_id = None        # current weapons target, kept briefly while still shootable
         self.regroup = False      # healing up between fights (after a kill, or hurt with nobody on us)
+        self.heard = None         # (bearing, t) of the latest fight noise, for seek
         self.tgt_since = -99.0
 
     # ---------------------------------------------------------------------------- zone model
@@ -933,7 +934,18 @@ class Bot:
             if loot_goal is None and dh < 40 and not foes_close:
                 loot_goal = (p["pos"][0], p["pos"][1])
 
-        # ---- movement: zone > supply drop > loot > drift ----
+        # ---- cubes: each one is +4% HP and damage (cap 10) and an upgrade at 1/3/6/10; kills drop them ----
+        cube_goal = None
+        if flag("cubes") and me.get("cubes", 0) < 12:
+            best = None
+            for c in obs.get("cubes") or []:
+                dh = math.dist(c["pos"][:2], (x, y))
+                if dh < 70 and abs(c["pos"][2] - z) < 4 and (best is None or dh < best[0]):
+                    best = (dh, c["pos"][0], c["pos"][1])
+            if best is not None:
+                cube_goal = best[1:]
+
+        # ---- movement: zone > supply drop > cubes > loot > drift ----
         self._track_zone_mode(zone, t)
         target = self._zone_target(zone, x, y, z)
         outside = not me["in_zone"]
@@ -987,6 +999,10 @@ class Bot:
                 gx, gy = _norm(wp[0] - x, wp[1] - y)
                 drop_boost = dd / walk > drop["lands_in"] and energy > 50
                 mf.draw.line([x, y, z + 1.5], [wp[0], wp[1], z + 1.5], "#ff80ff")
+        elif cube_goal is not None and not risk:
+            mode = "cube"
+            gx, gy = _norm(cube_goal[0] - x, cube_goal[1] - y)
+            mf.draw.point([cube_goal[0], cube_goal[1], z], "#40ff80", 5)
         elif loot_goal is not None and not risk:
             mode = "loot"
             gx, gy = _norm(loot_goal[0] - x, loot_goal[1] - y)
@@ -1012,12 +1028,25 @@ class Bot:
                 gx, gy = _norm(nc[0] - x, nc[1] - y)
                 pull = 0.0 if dc < zone["next_radius"] * 0.3 else 0.4
 
+        # seek: safe, healthy and nobody in sight: walk toward the latest fight noise (kills, cubes)
+        for snd in obs.get("sounds") or []:
+            if snd["kind"] in ("gun", "death", "mortar", "lightning", "step", "boost"):
+                self.heard = (snd["bearing"], t)
+        if (flag("seek") and mode in ("safe", "cover") and not enemies and self.heard
+                and t - self.heard[1] < 8.0 and me["hp"] >= 0.7 * me["max_hp"]):
+            b = self.heard[0]
+            px, py = x + 40 * math.cos(b), y + 40 * math.sin(b)
+            nc = zone["next_center"]
+            if math.hypot(px - nc[0], py - nc[1]) < zone["next_radius"] - 15:
+                mode = "seek"
+                gx, gy, pull = math.cos(b), math.sin(b), 1.0
+
         ddx, ddy, urgency, why = self._dodge(obs, t, x, y, z, vx, vy, slots)
         sx, sy = self._strafe(obs, t, x, y)
 
         # range control: hold the distance our weapons like (pushes in while they reload)
         rcx = rcy = 0.0
-        if enemies and not risk and mode != "drop":
+        if enemies and not risk and mode not in ("drop", "cube"):
             f = enemies[0]
             d = math.dist(f["pos"][:2], (x, y))
             want = self._want_range(me, f, slots)
@@ -1033,6 +1062,8 @@ class Bot:
 
         if mode in ("hide", "regroup"):
             sx = sy = rcx = rcy = 0.0
+        if mode == "cube":
+            sx, sy = _clip_back(sx, sy, gx, gy)
 
         # travelling to the zone: side moves may not push us backwards; at risk, only sidestep
         if flag("zonefix") and target is not None and mode in ("path", "zone"):

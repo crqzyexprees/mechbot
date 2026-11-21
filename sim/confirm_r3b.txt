@@ -1,0 +1,10 @@
+
+=== confirm, 192 fresh matches each, seeds 960000+ (263 s)
+  aggr+cubes                       score  3.33 ± 0.25  kills 2.88  median death   302 s  worst tick 14.9 ms  (n=192)
+  aggr+cubes+strafe2               score  3.26 ± 0.23  kills 2.92  median death   302 s  worst tick 15.2 ms  (n=192)
+  aggr                             score  2.61 ± 0.16  kills 2.46  median death   302 s  worst tick 13.6 ms  (n=192)
+  aggr                             mean cubes held at end 0.62
+  aggr+cubes                       mean cubes held at end 4.08
+  aggr+cubes+strafe2               mean cubes held at end 3.92
+  aggr+cubes - aggr = +0.71 ± 0.30  (+2.4 s.e.)  BETTER
+  aggr+cubes+strafe2 - aggr = +0.64 ± 0.28  (+2.3 s.e.)  BETTER

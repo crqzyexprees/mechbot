@@ -19,7 +19,8 @@ candidate kills, all of them after --late seconds. Hunters know where the candid
 house bot sees it (or always, with --omniscient). Non-hunters ignore the candidate unless it shot them
 in the last 10 s. House bots only take zone damage in the final circle (they play the zone well).
 
-Not modelled: loot, mortar/laser/lightning, NPCs, crates, cubes, upgrades, supply drops, jumping,
+Cubes: death drops (victim's + 2), pickup, +HP/+damage/+size scaling.
+Not modelled: loot, mortar/laser/lightning, NPCs, crates, upgrades, supply drops, jumping,
 jets, roofs, bridges, trees, mech-vs-mech pushing. The bots under test get `[]` for those fields.
 
 Usage (from anywhere):
@@ -186,6 +187,8 @@ class Mech:
         self.gun = dict(g)
         self.ammo, self.reload_t, self.cool = int(g["mag"]), 0.0, 0.0
         self.alive, self.death_tick = True, None
+        self.cubes = 0
+        self.base_hp = self.hp
         self.last_spend = -9.0
         self.last_combat = -9.0
         self.step_t = 0.0
@@ -223,6 +226,12 @@ class Match:
                 bot = None
             self.mechs.append(Mech(i, pos, self.cfg, bot, mf))
         self.bullets = []
+        self.cube_list = []   # {"id", "x", "y", "z"}
+        self.cube_id = 5000
+        cc = self.cfg.get("cubes", {})
+        self.cube_cfg = {"pickup_radius": cc.get("pickup_radius", 3.5), "hp": cc.get("hp_per_cube", 0.04),
+                         "dmg": cc.get("damage_per_cube", 0.04), "cap": cc.get("stat_cap", 10),
+                         "extra": cc.get("death_drop_extra", 2), "size": cc.get("size_per_cube", 0.05)}
         self.tick = 0
         self.t = 0.0
         self.house = (squad or {}).get("house", {})
@@ -315,6 +324,44 @@ class Match:
                 dist = "near" if d < self.cfg["sound"]["near"] else "mid" if d < self.cfg["sound"]["mid"] else "far"
                 m.sounds.append({"kind": kind, "bearing": round(angdiff(b, 0), 3), "dist": dist, "age": 0.05})
 
+    def rad(self, m):
+        return self.radius * (1 + self.cube_cfg["size"] * m.cubes)
+
+    def hgt(self, m):
+        return self.height * (1 + self.cube_cfg["size"] * m.cubes)
+
+    def drop_cubes(self, m):
+        n = m.cubes + self.cube_cfg["extra"]
+        for k in range(n):
+            a = self.rng.uniform(-math.pi, math.pi)
+            rr = self.rng.uniform(0.5, 3.0)
+            x, y = m.x + rr * math.cos(a), m.y + rr * math.sin(a)
+            if self.w.blocked(x, y):
+                x, y = m.x, m.y
+            self.cube_id += 1
+            self.cube_list.append({"id": self.cube_id, "x": x, "y": y, "z": self.w.ground(x, y)})
+
+    def collect_cubes(self):
+        pr = self.cube_cfg["pickup_radius"]
+        keep = []
+        for c in self.cube_list:
+            best, bd = None, 1e9
+            for m in self.mechs:
+                if m.alive:
+                    d = math.hypot(m.x - c["x"], m.y - c["y"])
+                    if d <= pr and abs(m.z - c["z"]) <= 4 and d < bd:
+                        best, bd = m, d
+            if best is None:
+                keep.append(c)
+                continue
+            best.cubes += 1
+            mult = 1 + self.cube_cfg["hp"] * min(best.cubes, self.cube_cfg["cap"])
+            new_max = best.base_hp * mult
+            best.hp += new_max - best.max_hp
+            best.max_hp = new_max
+            best.events.append({"type": "pickup", "cubes": best.cubes})
+        self.cube_list = keep
+
     def sees(self, o, x, y):
         v = self.cfg["vision"]
         d = math.hypot(x - o.x, y - o.y)
@@ -343,12 +390,12 @@ class Match:
                     known = self.t - self.provoked.get(o.id, -99) < 10 and self.t - o.seen.get(m.id, -99) <= 5
                 if known:
                     mechs.append({"id": m.id, "kind": "mech", "pos": [m.x, m.y, m.z], "vel": [m.vx, m.vy, 0.0],
-                                  "aim": [m.yaw, m.pitch], "hp": m.hp, "max_hp": m.max_hp, "cubes": 0,
+                                  "aim": [m.yaw, m.pitch], "hp": m.hp, "max_hp": m.max_hp, "cubes": m.cubes,
                                   "weapons": ["gun"], "charging": False})
                 continue
             if self.t - o.seen.get(m.id, -99) <= self.cfg["vision"].get("memory_s", 5):
                 mechs.append({"id": m.id, "kind": "mech", "pos": [m.x, m.y, m.z], "vel": [m.vx, m.vy, 0.0],
-                              "aim": [m.yaw, m.pitch], "hp": m.hp, "max_hp": m.max_hp, "cubes": 0,
+                              "aim": [m.yaw, m.pitch], "hp": m.hp, "max_hp": m.max_hp, "cubes": m.cubes,
                               "weapons": ["gun"], "charging": False})
         projs = []
         for b in self.bullets:
@@ -362,11 +409,12 @@ class Match:
             "type": "obs", "tick": self.tick, "t": round(self.t, 2), "alive": alive_n,
             "self": {"id": o.id, "pos": [o.x, o.y, o.z], "vel": [o.vx, o.vy, 0.0], "aim": [o.yaw, o.pitch],
                      "hp": o.hp, "max_hp": o.max_hp, "energy": o.energy, "max_energy": o.max_energy,
-                     "grounded": True, "cubes": 0, "upgrades": [], "in_zone": o.in_zone,
+                     "grounded": True, "cubes": o.cubes, "upgrades": [], "in_zone": o.in_zone,
                      "weapons": [{"kind": "gun", "cooldown": max(0.0, o.cool), "ammo": o.ammo,
                                   "reload": max(0.0, o.reload_t), "stats": dict(self.cfg["weapons"]["gun"])}, None],
                      "stats": st},
-            "mechs": mechs, "projectiles": projs, "crates": [], "cubes": [], "pickups": [],
+            "mechs": mechs, "projectiles": projs, "crates": [], "cubes": [{"id": c["id"], "pos": [c["x"], c["y"], c["z"]]} for c in self.cube_list
+                                                 if self.sees(o, c["x"], c["y"])], "pickups": [],
             "sounds": o.sounds, "beams": [], "events": o.events, "drops": [], "zone": zone, "offer": None,
         }
         o.sounds, o.events = [], []
@@ -421,6 +469,7 @@ class Match:
         if victim.hp <= 0:
             victim.alive, victim.death_tick = False, self.tick
             self.emit("death", victim.x, victim.y, victim)
+            self.drop_cubes(victim)
             if by is not None:
                 by.events.append({"type": "kill", "target": victim.id})
                 if self.squad is not None and not self.is_house(by) and self.is_house(victim):
@@ -457,7 +506,7 @@ class Match:
             m.vx += ddx
             m.vy += ddy
             nx_, ny_ = m.x + m.vx * DT, m.y + m.vy * DT
-            r = self.radius
+            r = self.rad(m)
             if not self.w.body_blocked(nx_, ny_, r):
                 m.x, m.y = nx_, ny_
             elif not self.w.body_blocked(nx_, m.y, r):
@@ -513,7 +562,7 @@ class Match:
                 L2 = (ex - sx) ** 2 + (ey - sy) ** 2
                 f = max(0.0, min(1.0, (px * (ex - sx) + py * (ey - sy)) / L2)) if L2 > 0 else 0.0
                 cx, cy, cz = sx + (ex - sx) * f, sy + (ey - sy) * f, sz + (ez - sz) * f
-                if math.hypot(m.x - cx, m.y - cy) < self.radius + 0.3 and m.z - 0.3 <= cz <= m.z + self.height + 0.3 and f < best:
+                if math.hypot(m.x - cx, m.y - cy) < self.rad(m) + 0.3 and m.z - 0.3 <= cz <= m.z + self.hgt(m) + 0.3 and f < best:
                     hit, best = m, f
             # walls: sample the segment up to the hit point
             stop = best if hit else 1.0
@@ -530,6 +579,7 @@ class Match:
                 src = math.atan2(-b["vy"], -b["vx"])  # direction the bullet came from
                 rear = abs(angdiff(src, hit.yaw)) > math.radians(self.cfg["mech"]["front_arc_deg"]) / 2
                 dmg = b["owner"].gun["damage"] * (self.cfg["mech"]["rear_mult"] if rear else 1.0)
+                dmg *= 1 + self.cube_cfg["dmg"] * min(b["owner"].cubes, self.cube_cfg["cap"])
                 self.damage(hit, dmg, b["owner"], round(src, 3), "gun", rear)
                 continue
             b["left"] -= seg
@@ -538,6 +588,7 @@ class Match:
             b["x"], b["y"], b["z"] = ex, ey, ez
             keep.append(b)
         self.bullets = keep
+        self.collect_cubes()
         # zone and regen
         cx, cy, r, dps = self.zone_live(self.t)
         for m in self.mechs:
@@ -618,7 +669,7 @@ def one_match(args):
     out = []
     for i in slots:
         me = m.mechs[i]
-        out.append({"place": places[i], "kills": m.cand_kills, "death_t": None if me.alive else round(me.death_tick * DT, 1),
+        out.append({"place": places[i], "kills": m.cand_kills, "cubes": me.cubes, "death_t": None if me.alive else round(me.death_tick * DT, 1),
                     "zone_death": (not me.alive) and me.events[-1:] and me.events[-1].get("weapon") == "zone",
                     "max_ms": max(me.act_ms) if me.act_ms else 0, "errors": me.errors})
     return out
