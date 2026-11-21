@@ -1,0 +1,13 @@
+
+=== confirm, 192 fresh matches each, seeds 970000+ (398 s)
+  B+crates                         score  4.64 ± 0.30  kills 3.71  median death   300 s  worst tick 13.7 ms  (n=192)
+  B                                score  4.29 ± 0.27  kills 3.57  median death   301 s  worst tick 13.4 ms  (n=192)
+  A                                score  3.32 ± 0.24  kills 2.81  median death   301 s  worst tick 13.0 ms  (n=192)
+  A+crates                         score  3.32 ± 0.23  kills 2.86  median death   301 s  worst tick 13.4 ms  (n=192)
+  A                                mean cubes held at end 3.78
+  A+crates                         mean cubes held at end 4.68
+  B                                mean cubes held at end 4.54
+  B+crates                         mean cubes held at end 5.32
+  A+crates - A = -0.01 ± 0.33  (-0.0 s.e.)  not clearly better
+  B - A = +0.96 ± 0.36  (+2.7 s.e.)  BETTER
+  B+crates - A = +1.31 ± 0.38  (+3.4 s.e.)  BETTER

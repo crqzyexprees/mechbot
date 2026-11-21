@@ -19,8 +19,8 @@ candidate kills, all of them after --late seconds. Hunters know where the candid
 house bot sees it (or always, with --omniscient). Non-hunters ignore the candidate unless it shot them
 in the last 10 s. House bots only take zone damage in the final circle (they play the zone well).
 
-Cubes: death drops (victim's + 2), pickup, +HP/+damage/+size scaling.
-Not modelled: loot, mortar/laser/lightning, NPCs, crates, upgrades, supply drops, jumping,
+Cubes: death drops (victim's + 2), pickup, +HP/+damage/+size scaling. Ground crates (300 HP, 1 cube).
+Not modelled: loot, mortar/laser/lightning, NPCs, roof crates, upgrades, supply drops, jumping,
 jets, roofs, bridges, trees, mech-vs-mech pushing. The bots under test get `[]` for those fields.
 
 Usage (from anywhere):
@@ -232,6 +232,7 @@ class Match:
         self.cube_cfg = {"pickup_radius": cc.get("pickup_radius", 3.5), "hp": cc.get("hp_per_cube", 0.04),
                          "dmg": cc.get("damage_per_cube", 0.04), "cap": cc.get("stat_cap", 10),
                          "extra": cc.get("death_drop_extra", 2), "size": cc.get("size_per_cube", 0.05)}
+        self.crates = self.spawn_crates(seed)
         self.tick = 0
         self.t = 0.0
         self.house = (squad or {}).get("house", {})
@@ -324,6 +325,25 @@ class Match:
                 dist = "near" if d < self.cfg["sound"]["near"] else "mid" if d < self.cfg["sound"]["mid"] else "far"
                 m.sounds.append({"kind": kind, "bearing": round(angdiff(b, 0), 3), "dist": dist, "age": 0.05})
 
+    def spawn_crates(self, seed):
+        """Ground crates only (the real game puts about a quarter on roofs, which a walker can't loot)."""
+        cc = self.cfg.get("crates", {})
+        n = int(round(cc.get("count", 36) * (1 - cc.get("roof_fraction", 0.25))))
+        rng = random.Random(seed * 7 + 13)
+        cx, cy = self.cfg["zone"]["start_center"]
+        R = self.cfg["zone"]["start_radius"]
+        out = []
+        for k in range(n):
+            for _ in range(500):
+                a, d = rng.uniform(-math.pi, math.pi), math.sqrt(rng.random()) * R
+                x, y = cx + math.cos(a) * d, cy + math.sin(a) * d
+                if self.w.x0 + 20 < x < self.w.x1 - 20 and self.w.y0 + 20 < y < self.w.y1 - 20 \
+                        and not self.w.body_blocked(x, y, 2.0):
+                    break
+            out.append({"id": 1000 + k, "x": x, "y": y, "z": self.w.ground(x, y), "hp": float(cc.get("hp", 300)),
+                        "r": cc.get("radius", 1.4), "h": cc.get("height", 2.4)})
+        return out
+
     def rad(self, m):
         return self.radius * (1 + self.cube_cfg["size"] * m.cubes)
 
@@ -413,7 +433,9 @@ class Match:
                      "weapons": [{"kind": "gun", "cooldown": max(0.0, o.cool), "ammo": o.ammo,
                                   "reload": max(0.0, o.reload_t), "stats": dict(self.cfg["weapons"]["gun"])}, None],
                      "stats": st},
-            "mechs": mechs, "projectiles": projs, "crates": [], "cubes": [{"id": c["id"], "pos": [c["x"], c["y"], c["z"]]} for c in self.cube_list
+            "mechs": mechs, "projectiles": projs, "crates": [{"id": c["id"], "pos": [c["x"], c["y"], c["z"]], "hp": c["hp"]} for c in self.crates
+                                                  if self.sees(o, c["x"], c["y"])],
+            "cubes": [{"id": c["id"], "pos": [c["x"], c["y"], c["z"]]} for c in self.cube_list
                                                  if self.sees(o, c["x"], c["y"])], "pickups": [],
             "sounds": o.sounds, "beams": [], "events": o.events, "drops": [], "zone": zone, "offer": None,
         }
@@ -564,8 +586,16 @@ class Match:
                 cx, cy, cz = sx + (ex - sx) * f, sy + (ey - sy) * f, sz + (ez - sz) * f
                 if math.hypot(m.x - cx, m.y - cy) < self.rad(m) + 0.3 and m.z - 0.3 <= cz <= m.z + self.hgt(m) + 0.3 and f < best:
                     hit, best = m, f
+            crate_hit = None
+            for c in self.crates:
+                px, py = c["x"] - sx, c["y"] - sy
+                L2 = (ex - sx) ** 2 + (ey - sy) ** 2
+                f = max(0.0, min(1.0, (px * (ex - sx) + py * (ey - sy)) / L2)) if L2 > 0 else 0.0
+                cx, cy, cz = sx + (ex - sx) * f, sy + (ey - sy) * f, sz + (ez - sz) * f
+                if math.hypot(c["x"] - cx, c["y"] - cy) < c["r"] and c["z"] - 0.2 <= cz <= c["z"] + c["h"] and f < best:
+                    hit, best, crate_hit = None, f, c
             # walls: sample the segment up to the hit point
-            stop = best if hit else 1.0
+            stop = best if (hit or crate_hit) else 1.0
             wall = False
             n = max(1, int(seg * stop / 2.0))
             for k in range(1, n + 1):
@@ -574,6 +604,15 @@ class Match:
                     wall = True
                     break
             if wall:
+                continue
+            if crate_hit is not None:
+                dmg = b["owner"].gun["damage"] * (1 + self.cube_cfg["dmg"] * min(b["owner"].cubes, self.cube_cfg["cap"]))
+                crate_hit["hp"] -= dmg
+                b["owner"].events.append({"type": "hit", "target": crate_hit["id"], "amount": round(dmg, 1), "weapon": "gun"})
+                if crate_hit["hp"] <= 0:
+                    self.crates.remove(crate_hit)
+                    self.cube_id += 1
+                    self.cube_list.append({"id": self.cube_id, "x": crate_hit["x"], "y": crate_hit["y"], "z": crate_hit["z"]})
                 continue
             if hit is not None:
                 src = math.atan2(-b["vy"], -b["vx"])  # direction the bullet came from

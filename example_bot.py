@@ -36,7 +36,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "seek"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "seek", "focus", "strafe2", "crates"}
 
 
 def flag(name):
@@ -385,6 +385,7 @@ class Bot:
         self.tgt_id = None        # current weapons target, kept briefly while still shootable
         self.regroup = False      # healing up between fights (after a kill, or hurt with nobody on us)
         self.heard = None         # (bearing, t) of the latest fight noise, for seek
+        self.crate_id = None      # crate we're shooting open for its cube
         self.tgt_since = -99.0
 
     # ---------------------------------------------------------------------------- zone model
@@ -1150,6 +1151,30 @@ class Bot:
         if flag("heal") and mode == "hide" and me["hp"] < 0.35 * me["max_hp"]:
             act["fire"] = [False, False]  # dealing damage resets the 5 s regen timer too
             wtag = "heal"
+        # nobody in sight: shoot open a reachable crate (300 HP = 7 shots) for its cube and maybe a weapon
+        if wtag is None and flag("crates") and not enemies and mode not in ("hide", "regroup"):
+            gun = me["weapons"][0]
+            best = None
+            mh = me["stats"].get("muzzle_height", 7.0)
+            for c in obs.get("crates") or []:
+                cx_, cy_, cz_ = c["pos"]
+                d = math.hypot(cx_ - x, cy_ - y)
+                if d > 65 or abs(cz_ - z) > 3.0:
+                    continue  # too far for the cube to be worth it, or on a roof
+                if self.grid is not None and not self.grid.los(x, y, cx_, cy_):
+                    continue
+                key = (c["id"] != self.crate_id, d)
+                if best is None or key < best[0]:
+                    best = (key, c, d)
+            if best is not None and gun and gun.get("ammo", 0) > 0 and not gun.get("reload"):
+                _, c, d = best
+                self.crate_id = c["id"]
+                yaw = math.atan2(c["pos"][1] - y, c["pos"][0] - x)
+                pitch = math.atan2(c["pos"][2] + 1.2 - (z + mh), max(d, 1.0))
+                act["aim"] = [yaw, pitch]
+                act["fire"] = [_aimed(me, yaw, pitch, d, 1.0), False]
+                wtag = "crate"
+                mf.draw.line([x, y, z + mh], [c["pos"][0], c["pos"][1], c["pos"][2] + 1.2], "#c0a040")
         if wtag is None:  # nothing to shoot: look where it matters
             if self.face and t < self.face[1]:
                 act["aim"] = [self.face[0], 0.0]
