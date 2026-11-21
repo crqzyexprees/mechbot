@@ -938,7 +938,7 @@ class Bot:
                     act["drop"] = 1
                 act["take"] = p["id"]
                 break
-            if loot_goal is None and dh < 40 and not foes_close:
+            if loot_goal is None and dh < (120 if flag("lootfar") and t < 150 else 40) and not foes_close:
                 loot_goal = (p["pos"][0], p["pos"][1])
 
         # ---- cubes: each one is +4% HP and damage (cap 10) and an upgrade at 1/3/6/10; kills drop them ----

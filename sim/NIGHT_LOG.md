@@ -19,7 +19,8 @@ Same commit scored 3.56 and 3.42: the real scorer is repeatable to about ±0.1 (
 than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) really is worse.
 
 | BB-FC832A13 | 379f5bf | U: A + damage-first upgrades (uppower) | about +0.40 ± 0.14 over A (1152 each) | 3.52 (A: 3.56, 3.42) |
-| BB-?       | (next) | U + crates + seek | +0.30 ± 0.30 over U (384 each) | real test |
+| BB-2B482130 | ed981aa | U + crates + seek | +0.30 ± 0.30 over U (384 each) | **3.96** (best, +0.44) |
+| next | lootfar | ed981aa + walk up to 120 m for ground weapons in the first 150 s | (sim has no loot) | real test |
 
 ### Change of method (03:55)
 Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
