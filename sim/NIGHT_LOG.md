@@ -27,7 +27,7 @@ than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) rea
 | BB-6F48C004 | 2025b71 | 2e8d5c2 + steering looks only as far as the route waypoint | +0.31 ± 0.22 (sim, 768) | 3.98 (neutral; kept, correct fix) |
 | BB-2D784B26 | a80dbe0 | 2025b71 + regroup: heal to 85% out of sight between fights | +0.04 ± 0.32 (sim) | 3.79 (worse than 3.98, off) |
 | BB-5D0464CB | 36e24d0 | 2025b71 + hunt: walk to the last-seen enemy when healthy and idle | +0.40 ± 0.29 (sim) | 3.73 (off) |
-| next | roof | 2025b71 + roof: climb a roof inside the next circle and fight from it | sim can't model roofs | real test |
+| BB-D250913B | 45859f3 | 2025b71 + roof: climb a roof inside the next circle and fight from it | sim can't model roofs | 3.58 (worse, off) |
 
 ### Change of method (03:55)
 Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
@@ -207,3 +207,11 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Kinematic harness (`sim/climb_test.py`: one mech, protocol jump/jet/energy numbers, walls from the grid):
   13 of 20 random roofs reached and held, usually in 3-5 s.
 - The flat sim can only show the cost (climbs always fail there): 3.75 on 96 matches. Real test decides.
+- Real: 45859f3 (roof) 3.58, the worst since 2e8d5c2. Off. HEAD restored to 2025b71 behaviour (3.98).
+
+## Stopped (07:15)
+- Seven real tests since the 4.06 best: 3.98, 3.96, 3.79, 3.77, 3.73, 3.73, 3.58. None beat it; the sim's
+  screening stopped predicting real results once the remaining changes were about fights and movement.
+- The leaderboard keeps 4.06 (BB-8216156A, 2e8d5c2) as the final entry unless another is picked.
+- To get the ~1.2 needed for the top 32, the sim needs to model what decides real fights (loot weapons,
+  NPC drones, jumping/roofs, stronger house bots) before more tuning is worth real slots.
