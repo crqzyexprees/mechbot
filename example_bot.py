@@ -12,7 +12,7 @@ Movement:
 
 Weapons: gun with aim-ahead, mortar lobbed by ballistic pitch (high arc over buildings), laser
 charged only when it's safe to slow down, lightning fired whenever the cone holds a target.
-Loot ranked mortar > lightning > laser with swaps; speed/energy upgrades first; early reloads.
+Loot ranked lightning > laser > mortar with swaps (lootflip; mortar first without it); speed/energy upgrades first; early reloads.
 
 Standard library only; uses the kit's mechfight.py wrapper.
 """
@@ -69,6 +69,8 @@ def _angdiff(a, b):
 # --------------------------------------------------------------------------------------------
 # weapons helpers (protocol.md §5, §7)
 LOOT_RANK = {"mortar": 3, "lightning": 2, "laser": 1, "gun": 0}  # laser last: charging halves speed
+# lootflip: by damage per second lightning (240, no aim) > laser (131, hitscan) > mortar (~77 on a direct hit)
+LOOT_FLIP = {"lightning": 3, "laser": 2, "mortar": 1, "gun": 0}
 UPGRADE_PREF = ["servos", "jets", "armor", "capacitor", "nanites", "reactor", "gyros",
                 "gun_velocity", "gun_rate", "mortar_velocity", "lightning_range", "plating"]
 _WEAPON_UPS = ["mortar_reload", "mortar_velocity", "mortar_splash", "lightning_efficiency", "lightning_range",
@@ -946,6 +948,14 @@ class Bot:
         tp = tgt["pos"]
         d = math.dist(tp[:2], (x, y))
         aim, tag = None, ""
+        # holdfire: memory reports mechs behind walls for 5 s; bullets into a wall only empty the
+        # magazine, so hold the gun and reload while the target is hidden
+        blind = (flag("holdfire") and self.grid is not None and abs(tp[2] - z) < 4
+                 and not self.grid.los(x, y, tp[0], tp[1]))
+        if blind and "gun" in W:
+            g = W["gun"]
+            if (g.get("reload") or 0) == 0 and (g.get("ammo") or 0) < g["stats"]["mag"] * 0.7:
+                act["reload"] = True
 
         def laser_target(rng):  # laser cooks off mortar carriers (+60%): prefer them
             return next((m for m in enemies if "mortar" in (m.get("weapons") or [])
@@ -999,7 +1009,7 @@ class Bot:
             gyaw, gpitch, gd = _lead(me, tgt, st["speed"])
             if aim is None:
                 aim, tag = (gyaw, gpitch), "gun"
-            if gd < st["range"] and _aimed(me, gyaw, gpitch, gd, 2.5):
+            if gd < st["range"] and _aimed(me, gyaw, gpitch, gd, 2.5) and not blind:
                 fire[slots["gun"]] = True
 
         if aim is None:
@@ -1088,6 +1098,8 @@ class Bot:
         if obs["offer"]:
             ids = [c["id"] for c in obs["offer"]["choices"]]
             pref = UP_POWER if flag("uppower") else UP_TANK if flag("uptank") else UPGRADE_PREF
+            if flag("upmag"):  # +8 rounds and -20% reload: +31% sustained gun damage, vs +15% for gun_damage
+                pref = ["gun_mag"] + [u for u in pref if u != "gun_mag"]
             act["pick"] = min(range(len(ids)), key=lambda i: pref.index(ids[i]) if ids[i] in pref else 99)
 
         # ---- loot: take or swap in anything better within reach; remember a better one in sight ----
@@ -1098,7 +1110,8 @@ class Bot:
             k = p["kind"]
             if k in slots or k == "gun":
                 continue  # can't hold two of a kind
-            if cur1 is not None and LOOT_RANK.get(k, 0) <= LOOT_RANK.get(cur1["kind"], 0):
+            rank = LOOT_FLIP if flag("lootflip") else LOOT_RANK
+            if cur1 is not None and rank.get(k, 0) <= rank.get(cur1["kind"], 0):
                 continue
             dh = math.dist(p["pos"][:2], (x, y))
             if dh < self.reach and abs(p["pos"][2] - z) < 4:

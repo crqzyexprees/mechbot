@@ -1,0 +1,13 @@
+
+=== confirm, 192 fresh matches each, seeds 1010000+ (401 s)
+  base                             score  4.54 ± 0.29  kills 3.82  median death   302 s  worst tick 14.0 ms  (n=192)
+  upmag                            score  4.50 ± 0.28  kills 3.88  median death   301 s  worst tick 14.0 ms  (n=192)
+  both                             score  4.46 ± 0.30  kills 3.74  median death   301 s  worst tick 15.0 ms  (n=192)
+  holdfire                         score  4.39 ± 0.29  kills 3.71  median death   302 s  worst tick 15.3 ms  (n=192)
+  base                             mean cubes held at end 6.27  zone deaths 35/192
+  upmag                            mean cubes held at end 6.35  zone deaths 34/192
+  holdfire                         mean cubes held at end 6.28  zone deaths 36/192
+  both                             mean cubes held at end 6.42  zone deaths 34/192
+  upmag - base = -0.04 ± 0.40  (-0.1 s.e.)  not clearly better
+  holdfire - base = -0.15 ± 0.41  (-0.4 s.e.)  not clearly better
+  both - base = -0.08 ± 0.42  (-0.2 s.e.)  not clearly better

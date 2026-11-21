@@ -215,3 +215,12 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - The leaderboard keeps 4.06 (BB-8216156A, 2e8d5c2) as the final entry unless another is picked.
 - To get the ~1.2 needed for the top 32, the sim needs to model what decides real fights (loot weapons,
   NPC drones, jumping/roofs, stronger house bots) before more tuning is worth real slots.
+
+## Day session: reload, fire and loot order
+
+- `upmag` (pick Drum magazine first: +31% sustained gun damage by the stats) and `holdfire` (no gun fire
+  at a target behind a wall, reload instead), `sim/confirm_r15.txt`, 192 fresh matches each, seeds 1010000+:
+  base 4.54 ± 0.29, upmag 4.50, holdfire 4.39, both 4.46. None within 1 s.e. of better: not pushed.
+  Both switches are left in the code, off.
+- `lootflip` (loot ranked lightning > laser > mortar, by damage per second) is in the code, on in the
+  working tree, uncommitted. The sim has no loot weapons, so only a real submission can test it.
