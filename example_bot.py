@@ -1049,6 +1049,20 @@ class Bot:
                 mode = "seek"
                 gx, gy, pull = math.cos(b), math.sin(b), 1.0
 
+        # cratego: idle and safe: walk toward the nearest ground crate in view until it's in easy range
+        if flag("cratego") and flag("crates") and mode in ("safe", "cover") and not enemies and not risk:
+            best = None
+            for c in obs.get("crates") or []:
+                d = math.hypot(c["pos"][0] - x, c["pos"][1] - y)
+                if 35 < d < 150 and abs(c["pos"][2] - z) < 3.0 and (best is None or d < best[0]):
+                    best = (d, c["pos"][0], c["pos"][1])
+            if best is not None:
+                nc = zone["next_center"]
+                if math.hypot(best[1] - nc[0], best[2] - nc[1]) < zone["next_radius"] - 10:
+                    mode = "crate"
+                    gx, gy = _norm(best[1] - x, best[2] - y)
+                    pull = 1.0
+
         ddx, ddy, urgency, why = self._dodge(obs, t, x, y, z, vx, vy, slots)
         sx, sy = self._strafe(obs, t, x, y)
 
@@ -1196,7 +1210,7 @@ class Bot:
             for c in obs.get("crates") or []:
                 cx_, cy_, cz_ = c["pos"]
                 d = math.hypot(cx_ - x, cy_ - y)
-                if d > 65 or abs(cz_ - z) > 3.0:
+                if d > (90 if flag("cratego") else 65) or abs(cz_ - z) > 3.0:
                     continue  # too far for the cube to be worth it, or on a roof
                 if self.grid is not None and not self.grid.los(x, y, cx_, cy_):
                     continue

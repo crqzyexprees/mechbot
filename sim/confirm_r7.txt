@@ -1,0 +1,7 @@
+
+=== confirm, 384 fresh matches each, seeds 1200000+ (401 s)
+  cratego                          score  4.54 ± 0.21  kills 3.73  median death   301 s  worst tick 16.6 ms  (n=384)
+  base                             score  4.31 ± 0.20  kills 3.64  median death   301 s  worst tick 13.9 ms  (n=384)
+  base                             mean cubes held at end 5.86
+  cratego                          mean cubes held at end 6.07
+  cratego - base = +0.23 ± 0.29  (+0.8 s.e.)  not clearly better

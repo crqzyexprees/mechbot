@@ -21,7 +21,8 @@ than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) rea
 | BB-FC832A13 | 379f5bf | U: A + damage-first upgrades (uppower) | about +0.40 ± 0.14 over A (1152 each) | 3.52 (A: 3.56, 3.42) |
 | BB-2B482130 | ed981aa | U + crates + seek | +0.30 ± 0.30 over U (384 each) | **3.96** (best, +0.44) |
 | BB-CDBDE7C4 | b5900fa | ed981aa + lootfar: walk up to 120 m for ground weapons in the first 150 s | (sim has no loot) | 3.73 (worse, off) |
-| next | drones | ed981aa + snipe NPC drones for cubes | (sim has no NPCs) | real test |
+| BB-8216156A | 2e8d5c2 | ed981aa + drones (snipe NPC drones for cubes) | (sim has no NPCs) | **4.06** (best, +0.10) |
+| next | cratego | 2e8d5c2 + walk to crates when idle, shoot them from 90 m | +0.23 ± 0.29 (sim) | real test |
 
 ### Change of method (03:55)
 Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
@@ -106,3 +107,8 @@ game mechanics the sim models faithfully, and judge real results on more than on
   each, 12 per match) from 70-200 m, where their 2.5-degree-spread bullets mostly miss; keep shooting the
   current one down to 20 m; cube pickup range 130 m with it on. Unit-tested on a real observation with an
   injected drone: it targets, leads and fires once aimed.
+
+### Round 7 (cratego): `sim/confirm_r7.txt`
+- cratego = when idle in a safe zone and nobody in sight, walk toward the nearest ground crate within
+  150 m (inside the next circle), and shoot crates from up to 90 m instead of 65 m.
+- 384 fresh each: cratego 4.54 ± 0.21 vs base 4.31 ± 0.20 (+0.23 ± 0.29, 0.8 s.e.); no regression -> real test.
