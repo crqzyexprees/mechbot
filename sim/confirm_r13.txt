@@ -1,0 +1,7 @@
+
+=== confirm, 384 fresh matches each, seeds 2200000+ (425 s)
+  hunt                             score  4.68 ± 0.21  kills 3.81  median death   302 s  worst tick 15.5 ms  (n=384)
+  base                             score  4.28 ± 0.20  kills 3.61  median death   302 s  worst tick 15.5 ms  (n=384)
+  base                             mean cubes held at end 6.01  zone deaths 66/384
+  hunt                             mean cubes held at end 6.29  zone deaths 59/384
+  hunt - base = +0.40 ± 0.29  (+1.4 s.e.)  not clearly better

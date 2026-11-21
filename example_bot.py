@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate"}
 
 
 def flag(name):
@@ -440,6 +440,7 @@ class Bot:
         self.tgt_id = None        # current weapons target, kept briefly while still shootable
         self.regroup = False      # healing up between fights (after a kill, or hurt with nobody on us)
         self.heard = None         # (bearing, t) of the latest fight noise, for seek
+        self.last_seen = {}       # enemy id -> (x, y, t) of its last sighting, for hunt
         self.crate_id = None      # crate we're shooting open for its cube
         self.drone_id = None      # NPC drone we're sniping for its 2 cubes
         self.tgt_since = -99.0
@@ -1100,6 +1101,25 @@ class Bot:
             if math.hypot(px - nc[0], py - nc[1]) < zone["next_radius"] - 15:
                 mode = "seek"
                 gx, gy, pull = math.cos(b), math.sin(b), 1.0
+
+        # hunt: kills are the score; with nothing in sight and nothing heard, healthy, walk to where an
+        # enemy was last seen (within 30 s) if that spot is safely inside the next circle
+        for m in enemies:
+            self.last_seen[m["id"]] = (m["pos"][0], m["pos"][1], t)
+        if (flag("hunt") and mode in ("safe", "cover") and not enemies
+                and me["hp"] >= 0.7 * me["max_hp"]):
+            nc = zone["next_center"]
+            best = None
+            for eid, (ex, ey, et) in list(self.last_seen.items()):
+                if t - et > 30.0:
+                    del self.last_seen[eid]
+                    continue
+                d = math.hypot(ex - x, ey - y)
+                if d > 12 and math.hypot(ex - nc[0], ey - nc[1]) < zone["next_radius"] - 15 and (best is None or et > best[0]):
+                    best = (et, ex, ey)
+            if best is not None:
+                mode = "hunt"
+                gx, gy, pull = *_norm(best[1] - x, best[2] - y), 1.0
 
         # cratego: idle and safe: walk toward the nearest ground crate in view until it's in easy range
         if flag("cratego") and flag("crates") and mode in ("safe", "cover") and not enemies and not risk:

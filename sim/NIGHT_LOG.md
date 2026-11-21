@@ -25,7 +25,8 @@ than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) rea
 | BB-D46D4999 | 39da462 | 2e8d5c2 + cratego: walk to crates when idle, shoot them from 90 m | +0.23 ± 0.29 (sim) | 3.96 (no gain, off) |
 | BB-491F2EED | eac4376 | 2e8d5c2 + terrain-aware walls + radius-aware routes | neutral, fewer zone deaths | 3.77 (worse, both off) |
 | BB-6F48C004 | 2025b71 | 2e8d5c2 + steering looks only as far as the route waypoint | +0.31 ± 0.22 (sim, 768) | 3.98 (neutral; kept, correct fix) |
-| next | regroup | 2025b71 + regroup: heal to 85% out of sight between fights | +0.04 ± 0.32 (sim) | real test |
+| BB-2D784B26 | a80dbe0 | 2025b71 + regroup: heal to 85% out of sight between fights | +0.04 ± 0.32 (sim) | 3.79 (worse than 3.98, off) |
+| next | hunt | 2025b71 + hunt: walk to the last-seen enemy when healthy and idle | +0.40 ± 0.29 (sim) | real test |
 
 ### Change of method (03:55)
 Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
@@ -179,3 +180,15 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - 384 fresh each: regroup 5.01, base 4.97 (+0.1 s.e.), outnumbered 3.65 (-4.4 s.e.), hide 2.40 (-9.5 s.e.).
   Zone deaths with steerwp on are down to 46/384. Hiding costs kills, and kills are the score.
 - regroup goes to a real test (the sim misjudged several fight-behaviour changes before).
+- Real: a80dbe0 (regroup) 3.79 vs 3.98 without it: off again.
+
+### Deaths analysis (`sim/deaths.py`, 192 matches)
+- 158 combat deaths, 100 of them in minute 5 (the sim's all-hunt at 300 s), usually 2-7 attackers in the last
+  10 s. Kills come at only 0.5-0.7 per minute before that: hunters arrive one at a time.
+- So more kills before the swarm is the lever: go and find fights while healthy.
+
+### Round 13 (hunt): `sim/confirm_r13.txt`
+- hunt = with nothing in sight and HP >= 70%, walk to the most recent enemy sighting (< 30 s old) that is
+  safely inside the next circle (seek only follows sounds < 8 s old).
+- 384 fresh: hunt 4.68 vs base 4.28, +0.40 ± 0.29 (+1.4 s.e.); kills 3.61 -> 3.81; zone deaths 66 -> 59.
+- Real test on 2025b71 (regroup off).

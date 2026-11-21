@@ -543,6 +543,8 @@ class Match:
             amount *= max(0.0, 1.0 - victim.armor)
         victim.hp -= amount
         victim.last_combat = self.t
+        if by is not None:
+            victim.hit_log = getattr(victim, "hit_log", []) + [(self.t, by.id)]
         ev = {"type": "damaged", "amount": round(amount, 1), "weapon": weapon, "bearing": bearing,
               "by": by.id if by else None}
         if rear:
@@ -557,6 +559,7 @@ class Match:
             self.drop_cubes(victim)
             if by is not None:
                 by.events.append({"type": "kill", "target": victim.id})
+                by.kill_ts = getattr(by, "kill_ts", []) + [round(self.t, 1)]
                 if self.squad is not None and not self.is_house(by) and self.is_house(victim):
                     self.cand_kills += 1
 
@@ -773,7 +776,10 @@ def one_match(args):
         me = m.mechs[i]
         out.append({"place": places[i], "kills": m.cand_kills, "cubes": me.cubes, "ups": dict(me.ups), "death_t": None if me.alive else round(me.death_tick * DT, 1),
                     "zone_death": (not me.alive) and me.events[-1:] and me.events[-1].get("weapon") == "zone",
-                    "max_ms": max(me.act_ms) if me.act_ms else 0, "errors": me.errors})
+                    "max_ms": max(me.act_ms) if me.act_ms else 0, "errors": me.errors,
+                    "kill_ts": getattr(me, "kill_ts", []),
+                    "attackers10": len({b for (tt, b) in getattr(me, "hit_log", []) if me.death_tick is not None and me.death_tick * DT - tt < 10}),
+                    "hunters_alive": sum(1 for x in m.mechs if x.alive and x.id != me.id)})
     return out
 
 
