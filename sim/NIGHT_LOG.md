@@ -295,3 +295,5 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - conf (fresh seeds 3300000): realmove lead85 +0.45±0.38, tol4 +0.26±0.39, both +0.39±0.38; cur lead85 +0.89±0.32* (hit +3.2*), tol4 +0.06±0.34, both +0.91±0.32*.
 - lead85 is positive in all 4 runs (mean about +0.48). tol4 fades on fresh seeds (+0.26, +0.06) and the looser 5 m gate lost for real, so it stays off.
 - Candidate: 4.42 + lead85. check.py PASS locally and in the container. Waiting on the user's approval to push and submit.
+- 17:06 pushed and submitted 1d49460 (lead85 on), receipt BB-3E5870E7. Leaderboard check: top-32 cut is now about 6.00 (rank 32 = 6.00), up from 5.27.
+- BB-3E5870E7 (1d49460, lead85) scored 3.94 (vs 4.42). Sim was wrong again on a lead change: both house-bot settings predicted a gain. Lead changes now treated as sim-untestable.
