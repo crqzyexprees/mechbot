@@ -31,7 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TIERS = [os.path.join(HERE, "baselines", d, "example_bot.py") for d in ("easy", "starter", "v1", "fighter")]
 V1 = os.path.join(HERE, "baselines", "v1", "example_bot.py")
 SQUAD = {"late": 300, "hunters": 1, "omniscient": False, "passive": True}
-_house = os.environ.get("SIM_HOUSE")  # pick a house-bot setup from calibrate.CONFIGS (e.g. "strong")
+_house = os.environ.get("SIM_HOUSE", "realmove")  # default: house bots that move like the real ones  # pick a house-bot setup from calibrate.CONFIGS (e.g. "strong")
 if _house:
     _B = lambda d: os.path.join(HERE, "baselines", d, "example_bot.py")
     TIERS, SQUAD = {
@@ -39,6 +39,7 @@ if _house:
         "strong": ([_B("v1"), _B("fighter"), _B("b398"), _B("best")], SQUAD),
         "mid": ([_B("easy"), _B("starter"), _B("fighter"), _B("b398")], SQUAD),
         "mid2": ([_B("starter"), _B("v1"), _B("fighter"), _B("b398")], SQUAD),
+        "realmove": (TIERS, dict(SQUAD, smooth_deg=90, smooth_alpha=0.3, min_speed=0.85)),
         "strong_act": ([_B("v1"), _B("fighter"), _B("b398"), _B("best")], dict(SQUAD, passive=False)),
     }[_house]
 CAUTIOUS = ["discipline", "nochase", "cover", "outnumbered", "hide"]

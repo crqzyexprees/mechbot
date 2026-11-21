@@ -11,12 +11,15 @@ B = lambda d: os.path.join(HERE, "baselines", d, "example_bot.py")
 # real practice scores (sim-visible differences; roof/loot-only/lightning-only tests left out)
 REAL = {"starter": 1.15, "ff3653f": 2.96, "2b1e2e4": 3.31, "080afbf": 3.19, "6b70f38": 3.49, "861f493": 3.10,
         "379f5bf": 3.52, "ed981aa": 3.96, "2e8d5c2": 4.06, "39da462": 3.96, "eac4376": 3.77, "2025b71": 3.98,
-        "a80dbe0": 3.79, "36e24d0": 3.73, "e7f1836": 4.15, "a0d7583": 3.79}
+        "a80dbe0": 3.79, "36e24d0": 3.73, "e7f1836": 4.15, "a0d7583": 3.79,
+        "70e5d61": 4.42, "c36b625": 4.08, "7f3176e": 4.27}
 CONFIGS = {
     "cur":        ([B("easy"), B("starter"), B("v1"), B("fighter")], {"late": 300, "hunters": 1, "omniscient": False, "passive": True}),
     "strong":     ([B("v1"), B("fighter"), B("b398"), B("best")], {"late": 300, "hunters": 1, "omniscient": False, "passive": True}),
     "mid":        ([B("easy"), B("starter"), B("fighter"), B("b398")], {"late": 300, "hunters": 1, "omniscient": False, "passive": True}),
     "mid2":       ([B("starter"), B("v1"), B("fighter"), B("b398")], {"late": 300, "hunters": 1, "omniscient": False, "passive": True}),
+    "realmove":   ([B("easy"), B("starter"), B("v1"), B("fighter")], {"late": 300, "hunters": 1, "omniscient": False, "passive": True,
+                                                                    "smooth_deg": 90, "smooth_alpha": 0.3, "min_speed": 0.85}),
     "strong_act": ([B("v1"), B("fighter"), B("b398"), B("best")], {"late": 300, "hunters": 1, "omniscient": False, "passive": False}),
 }
 
@@ -63,6 +66,14 @@ def main():
         sims.append(m)
         print(f"  {c:8s} real {REAL[c]:.2f}   sim {m:5.2f} ± {se:.2f}   kills {k:.2f}")
     real = [REAL[c] for c in names]
+    ref = "70e5d61"
+    print(f"  paired vs {ref} (real 4.42), same seeds:")
+    for c in names:
+        if c == ref:
+            continue
+        dd = [(16 - b["place"]) - (16 - a["place"]) for a, b in zip(res[ref], res[c])]
+        m_, se_ = statistics.mean(dd), statistics.stdev(dd) / math.sqrt(len(dd))
+        print(f"    {c:8s} real {REAL[c] - REAL[ref]:+.2f}   sim {m_:+.2f} ± {se_:.2f}")
     print(f"  Pearson r = {corr(sims, real):+.2f}   Spearman = {corr(ranks(sims), ranks(real)):+.2f}"
           f"   (without starter: Pearson {corr(sims[1:], real[1:]):+.2f}, Spearman {corr(ranks(sims[1:]), ranks(real[1:])):+.2f})")
 

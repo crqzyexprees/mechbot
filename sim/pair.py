@@ -24,7 +24,7 @@ def main():
     finally:
         shutil.rmtree(root, ignore_errors=True)
     ref = specs[0][0]
-    print(f"=== paired, {n} seeds from {base} ({time.time() - t0:.0f} s), house bots: {os.environ.get('SIM_HOUSE', 'cur')}")
+    print(f"=== paired, {n} seeds from {base} ({time.time() - t0:.0f} s), house bots: {os.environ.get('SIM_HOUSE', 'realmove')}")
     print(f"  {'':12s} {'score':>13s} {'hit %':>7s} {'cover %':>8s} {'dealt/match':>12s} {'taken/match':>12s} {'life s':>7s}")
     for lab, _ in specs:
         rs = res[lab]

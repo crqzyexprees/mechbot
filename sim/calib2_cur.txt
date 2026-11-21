@@ -1,0 +1,40 @@
+=== cur: 96 matches per commit, seeds 3100000+ (957 s)
+  starter  real 1.15   sim  1.73 ± 0.32   kills 1.46
+  ff3653f  real 2.96   sim  2.86 ± 0.22   kills 2.72
+  2b1e2e4  real 3.31   sim  3.24 ± 0.27   kills 2.91
+  080afbf  real 3.19   sim  4.36 ± 0.33   kills 3.78
+  6b70f38  real 3.49   sim  4.39 ± 0.45   kills 3.34
+  861f493  real 3.10   sim  4.98 ± 0.43   kills 3.95
+  379f5bf  real 3.52   sim  4.49 ± 0.44   kills 3.51
+  ed981aa  real 3.96   sim  5.22 ± 0.50   kills 3.84
+  2e8d5c2  real 4.06   sim  5.34 ± 0.50   kills 3.96
+  39da462  real 3.96   sim  5.27 ± 0.50   kills 3.89
+  eac4376  real 3.77   sim  5.55 ± 0.50   kills 4.17
+  2025b71  real 3.98   sim  5.17 ± 0.49   kills 3.83
+  a80dbe0  real 3.79   sim  5.15 ± 0.49   kills 3.82
+  36e24d0  real 3.73   sim  5.36 ± 0.49   kills 4.02
+  e7f1836  real 4.15   sim  5.71 ± 0.53   kills 4.10
+  a0d7583  real 3.79   sim  6.00 ± 0.53   kills 4.31
+  70e5d61  real 4.42   sim  6.54 ± 0.55   kills 4.66
+  c36b625  real 4.08   sim  6.31 ± 0.50   kills 4.84
+  7f3176e  real 4.27   sim  6.15 ± 0.54   kills 4.34
+  paired vs 70e5d61 (real 4.42), same seeds:
+    starter  real -3.27   sim -4.81 ± 0.57
+    ff3653f  real -1.46   sim -3.68 ± 0.52
+    2b1e2e4  real -1.11   sim -3.30 ± 0.51
+    080afbf  real -1.23   sim -2.18 ± 0.46
+    6b70f38  real -0.93   sim -2.16 ± 0.51
+    861f493  real -1.32   sim -1.56 ± 0.52
+    379f5bf  real -0.90   sim -2.05 ± 0.51
+    ed981aa  real -0.46   sim -1.32 ± 0.49
+    2e8d5c2  real -0.36   sim -1.20 ± 0.52
+    39da462  real -0.46   sim -1.27 ± 0.55
+    eac4376  real -0.65   sim -0.99 ± 0.57
+    2025b71  real -0.44   sim -1.38 ± 0.51
+    a80dbe0  real -0.63   sim -1.40 ± 0.47
+    36e24d0  real -0.69   sim -1.18 ± 0.40
+    e7f1836  real -0.27   sim -0.83 ± 0.46
+    a0d7583  real -0.63   sim -0.54 ± 0.49
+    c36b625  real -0.34   sim -0.23 ± 0.50
+    7f3176e  real -0.15   sim -0.40 ± 0.44
+  Pearson r = +0.89   Spearman = +0.87   (without starter: Pearson +0.84, Spearman +0.84)

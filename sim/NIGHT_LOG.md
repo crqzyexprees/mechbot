@@ -286,3 +286,12 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Real: BB-6A750ED7, 7f3176e (4.42 version + reloadduck): **4.27**, same as laserblend. Two different small
   changes both at 4.27 suggests the 4.42 version's own level is nearer 4.3 and 4.42 was partly a good run
   (same-commit reruns earlier differed by 0.14). reloadduck off; main = 4.42 behaviour.
+
+## Nov 21, 15:27 — house-bot movement calibration + aim screen
+- calib2 (96 matches/commit, seeds 3100000, 19 real commits): realmove Pearson +0.89 / Spearman +0.74; cur Pearson +0.89 / Spearman +0.87. Neither clearly better; use both.
+- pair_real1 (realmove, 192 seeds from 3200000, vs 4.42): lead85 +0.46±0.38, aimlat -0.26±0.35 (hit -3.5*), lead85+lat -0.27±0.32, tol28 -0.27±0.36, tol4 +0.73±0.37.
+- Next: same screen on cur bots (pair_cur1), then fresh seeds 3300000 for lead85 / tol4 / both under both settings (conf_*.txt).
+- pair_cur1 (cur bots, same seeds): lead85 +0.10±0.31 (hit +3.4*), aimlat -1.59±0.34*, lead85+lat -0.63±0.32, tol28 -0.83±0.32*, tol4 +0.28±0.31. Both settings agree in direction: lead85 and tol4 positive, aimlat and tol28 negative.
+- conf (fresh seeds 3300000): realmove lead85 +0.45±0.38, tol4 +0.26±0.39, both +0.39±0.38; cur lead85 +0.89±0.32* (hit +3.2*), tol4 +0.06±0.34, both +0.91±0.32*.
+- lead85 is positive in all 4 runs (mean about +0.48). tol4 fades on fresh seeds (+0.26, +0.06) and the looser 5 m gate lost for real, so it stays off.
+- Candidate: 4.42 + lead85. check.py PASS locally and in the container. Waiting on the user's approval to push and submit.

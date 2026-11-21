@@ -548,6 +548,53 @@ class Match:
                 a = {k: m.cmd[k] for k in ("move", "boost", "aim")}
             m.act_ms.append((time.perf_counter() - s) * 1000)
             mv = a.get("move", [0, 0])
+            sm = (self.squad or {}).get("smooth_deg")
+            if sm and self.is_house(m):
+                # real house bots curve smoothly and never reverse (kit stream: median 6.4 deg per 0.1 s);
+                # turn the commanded walking direction at most sm degrees per decision
+                nm = math.hypot(mv[0], mv[1])
+                pm = m.__dict__.get("prev_mv")
+                ms = (self.squad or {}).get("min_speed")
+                if ms:
+                    # real house bots keep walking (kit stream: median 9.7 m/s, under 1 m/s 1% of the time)
+                    if nm < 0.05 and pm is not None and math.hypot(*pm) > 0.05:
+                        pn = math.hypot(*pm)
+                        mv, nm = [pm[0] / pn * ms, pm[1] / pn * ms], ms
+                    elif 0.05 <= nm < ms:
+                        mv, nm = [mv[0] / nm * ms, mv[1] / nm * ms], ms
+                al = (self.squad or {}).get("smooth_alpha")
+                if al and nm > 0.05 and pm is not None and math.hypot(*pm) > 0.05:
+                    # blend the new walking direction into the last one (jitter averages out), keep the speed
+                    pn = math.hypot(*pm)
+                    bx, by = pm[0] / pn * (1 - al) + mv[0] / nm * al, pm[1] / pn * (1 - al) + mv[1] / nm * al
+                    bn = math.hypot(bx, by)
+                    if bn > 1e-6:
+                        mv = [bx / bn * nm, by / bn * nm]
+                if nm > 0.05 and pm is not None and math.hypot(*pm) > 0.05:
+                    want = math.atan2(mv[1], mv[0])
+                    have = math.atan2(pm[1], pm[0])
+                    dd = angdiff(want, have)
+                    lim = math.radians(sm)
+                    if abs(dd) > lim:
+                        ang = have + math.copysign(lim, dd)
+                        mv = [math.cos(ang) * nm, math.sin(ang) * nm]
+                if nm > 0.05:
+                    m.prev_mv = (mv[0], mv[1])
+            if self.is_house(m) if self.squad is not None else False:
+                # motion stats of house bots, to compare with the real stream
+                hv = (m.vx, m.vy)
+                ph = m.__dict__.get("prev_v")
+                near_c = any(c.alive and not self.is_house(c) and math.hypot(c.x - m.x, c.y - m.y) < 120 for c in self.mechs)
+                if near_c and ph is not None and math.hypot(*hv) > 2 and math.hypot(*ph) > 2:
+                    tv = abs(angdiff(math.atan2(hv[1], hv[0]), math.atan2(ph[1], ph[0])))
+                    st = self.__dict__.setdefault("hmot", [])
+                    if len(st) < 20000:
+                        st.append(round(math.degrees(tv), 1))
+                m.prev_v = hv
+                if near_c:
+                    tr_ = self.__dict__.setdefault("htr", [])
+                    if len(tr_) < 30000:
+                        tr_.append((self.tick, m.id, round(m.x, 2), round(m.y, 2), round(m.vx, 2), round(m.vy, 2)))
             self.resolve_offer(m, a.get("pick"))
             m.cmd = {"move": [float(mv[0]), float(mv[1])], "boost": bool(a.get("boost", False)),
                      "aim": a.get("aim", m.cmd["aim"]), "fire": list(a.get("fire", [False, False])),
@@ -846,6 +893,8 @@ def one_match(args):
                     "attackers10": len({b for (tt, b) in getattr(me, "hit_log", []) if me.death_tick is not None and me.death_tick * DT - tt < 10}),
                     "hunters_alive": sum(1 for x in m.mechs if x.alive and x.id != me.id),
                     "aimst": me.__dict__.get("aimst"),
+                    "hmot": m.__dict__.get("hmot", [])[:3000],
+                    "htr": m.__dict__.get("htr", []),
                     "dealt": me.__dict__.get("dealt", 0.0), "taken": me.__dict__.get("taken", 0.0),
                     "life": round((me.death_tick if me.death_tick is not None else m.tick) * DT, 1),
                     "house_aimst": [x.__dict__.get("aimst") for x in m.mechs if x is not me]})

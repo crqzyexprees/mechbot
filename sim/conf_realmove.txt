@@ -1,0 +1,10 @@
+=== paired, 192 seeds from 3300000 (361 s), house bots: realmove
+                       score   hit %  cover %  dealt/match  taken/match  life s
+  base           6.20 ± 0.38    64.3      7.6        12101         1573     299
+  lead85         6.65 ± 0.39    65.2      8.6        12300         1596     300
+  tol4           6.46 ± 0.38    64.4      8.3        12495         1560     297
+  lead85+tol4    6.58 ± 0.38    64.7      7.8        12478         1526     302
+  differences vs base, same seeds (± = paired standard error):
+  lead85       score +0.45 ± 0.38    hit  +0.3 ± 0.7    dealt   +199 ±  276    taken    +23 ±   59
+  tol4         score +0.26 ± 0.39    hit  -0.0 ± 0.8    dealt   +393 ±  315    taken    -13 ±   59
+  lead85+tol4  score +0.39 ± 0.38    hit  -0.6 ± 0.8    dealt   +377 ±  305    taken    -47 ±   59
