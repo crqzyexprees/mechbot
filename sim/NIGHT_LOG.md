@@ -13,6 +13,10 @@ passive non-hunters, late=300), calibrated against real practice scores.
 | BB-DFD1BDED | 080afbf | + focus (weakest clear-shot target) + strafe2 | 3.65 ± 0.21 (pushed 2.79 ± 0.18) | 3.19 |
 | BB-40E1BAD6 | 6b70f38 | A: aggressive (2b1e2e4 behaviour) + cubes | 3.33 ± 0.25 (aggr 2.61 ± 0.16) | **3.56** (best) |
 | BB-DDAA8695 | 861f493 | B: A + focus + strafe2 | 4.05 ± 0.26 (cube sim) | 3.10 |
+| BB-F8A4F210 | 6b70f38 | A again, unchanged: measures run-to-run noise of the real scorer | - | 3.42 |
+
+Same commit scored 3.56 and 3.42: the real scorer is repeatable to about ±0.1 (fixed seeds), far tighter
+than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) really is worse.
 
 Note: the site scores one submission per team at a time; the next one is refused until it finishes.
 
@@ -66,3 +70,15 @@ game mechanics the sim models faithfully, and judge real results on more than on
   Not shipped; flag kept, off by default.
 - Default flags set back to A (focus, strafe2, crates off).
 - Next: resubmit A's exact commit to measure how much a real score varies run to run.
+
+### Round 5 (upgrade order): `sim/confirm_r5.txt`
+- Cubes now trigger upgrade offers, and our order was movement-first (servos, jets, armor,
+  capacitor, ...), with gun_damage missing entirely. Sim now models offers at cube thresholds
+  (3 random eligible choices, choice 0 after 5 s) and per-mech upgrade effects (sim_pre_upgrades.py.bak = old).
+- uppower = gun_damage, gun_rate, armor, plating, nanites, gun_mag, servos, ...
+- uptank  = armor, plating, nanites, gun_damage, gun_rate, servos, ...
+- 192 fresh (`confirm_r5.txt`): uppower 4.11 ± 0.30, uptank 3.89 ± 0.28, A 3.69 ± 0.26 (uppower +1.1 s.e.).
+- 384 more (`confirm_r5b.txt`): uppower 3.55 ± 0.17 vs A 3.32 ± 0.16 (+1.0 s.e.).
+- Pooled 576 each: about +0.30 ± 0.19 (1.6 s.e.).
+- 576 more (`confirm_r5c.txt`): uppower 3.98 ± 0.17 vs A 3.48 ± 0.14 = +0.50 ± 0.22 (2.3 s.e.).
+  Pooled 1152 each: about +0.40 ± 0.14 (2.8 s.e.) -> BETTER. Shipping A + uppower.

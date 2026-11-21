@@ -20,7 +20,8 @@ house bot sees it (or always, with --omniscient). Non-hunters ignore the candida
 in the last 10 s. House bots only take zone damage in the final circle (they play the zone well).
 
 Cubes: death drops (victim's + 2), pickup, +HP/+damage/+size scaling. Ground crates (300 HP, 1 cube).
-Not modelled: loot, mortar/laser/lightning, NPCs, roof crates, upgrades, supply drops, jumping,
+Upgrade offers at cube thresholds (mech + gun upgrades; sensors = +25 m vision only).
+Not modelled: loot, mortar/laser/lightning, NPCs, roof crates, supply drops, jumping,
 jets, roofs, bridges, trees, mech-vs-mech pushing. The bots under test get `[]` for those fields.
 
 Usage (from anywhere):
@@ -189,6 +190,13 @@ class Mech:
         self.alive, self.death_tick = True, None
         self.cubes = 0
         self.base_hp = self.hp
+        self.cm = dict(m)                  # this mech's numbers after upgrades
+        self.armor = 0.0
+        self.vision_bonus = 0.0
+        self.ups = {}                      # upgrade id -> stacks
+        self.offers = []                   # pending offers: [choice ids]
+        self.offer_t = None                # when the current offer appeared
+        self.offer_id = 0
         self.last_spend = -9.0
         self.last_combat = -9.0
         self.step_t = 0.0
@@ -344,6 +352,52 @@ class Match:
                         "r": cc.get("radius", 1.4), "h": cc.get("height", 2.4)})
         return out
 
+    def queue_offer(self, m):
+        ok = [u for u in self.cfg.get("upgrades", [])
+              if u.get("requires") in (None, "gun") and m.ups.get(u["id"], 0) < u.get("max", 1)]
+        if len(ok) >= 1:
+            m.offers.append([u["id"] for u in self.rng.sample(ok, min(3, len(ok)))])
+
+    def offer_obs(self, m):
+        if not m.offers:
+            return None
+        if m.offer_t is None:
+            m.offer_t, m.offer_id = self.t, m.offer_id + 1
+        return {"id": m.offer_id, "expires": round(m.offer_t + 5.0, 2),
+                "choices": [{"id": c, "name": c, "desc": ""} for c in m.offers[0]]}
+
+    def resolve_offer(self, m, pick):
+        if not m.offers:
+            return
+        if pick is None and (m.offer_t is None or self.t < m.offer_t + 5.0):
+            return
+        ch = m.offers.pop(0)
+        m.offer_t = None
+        uid = ch[pick] if isinstance(pick, int) and 0 <= pick < len(ch) else ch[0]
+        u = next(u for u in self.cfg["upgrades"] if u["id"] == uid)
+        m.ups[uid] = m.ups.get(uid, 0) + 1
+        m.events.append({"type": "upgrade", "id": uid})
+        for e in u["effects"]:
+            grp, key = e["path"].split(".", 1)
+            if grp == "mech":
+                if key == "hp":
+                    f = e.get("mul", 1.0)
+                    m.base_hp *= f
+                    m.max_hp *= f
+                    m.hp *= f
+                elif key == "armor":
+                    m.armor += e.get("add", 0.0)
+                elif key == "vision_bonus":
+                    m.vision_bonus += e.get("add", 0.0)
+                elif key == "energy":
+                    m.max_energy += e.get("add", 0.0)
+                elif key in m.cm:
+                    m.cm[key] = m.cm[key] * e.get("mul", 1.0) + e.get("add", 0.0)
+            elif e["path"].startswith("weapons.gun."):
+                k = e["path"].split(".")[-1]
+                if k in m.gun:
+                    m.gun[k] = m.gun[k] * e.get("mul", 1.0) + e.get("add", 0.0)
+
     def rad(self, m):
         return self.radius * (1 + self.cube_cfg["size"] * m.cubes)
 
@@ -380,12 +434,14 @@ class Match:
             best.hp += new_max - best.max_hp
             best.max_hp = new_max
             best.events.append({"type": "pickup", "cubes": best.cubes})
+            if best.cubes in self.cfg.get("cubes", {}).get("upgrade_thresholds", ()):
+                self.queue_offer(best)
         self.cube_list = keep
 
     def sees(self, o, x, y):
         v = self.cfg["vision"]
         d = math.hypot(x - o.x, y - o.y)
-        if d > v["range"]:
+        if d > v["range"] + o.vision_bonus:
             return False
         if d > v["near_range"] and abs(angdiff(math.atan2(y - o.y, x - o.x), o.yaw)) > math.radians(v["fov_deg"]) / 2:
             return False
@@ -424,20 +480,20 @@ class Match:
             if self.sees(o, b["x"], b["y"]):
                 projs.append({"id": b["id"], "kind": "gun", "pos": [b["x"], b["y"], b["z"]], "vel": [b["vx"], b["vy"], b["vz"]]})
         cx, cy, r, _ = self.zone_live(self.t)
-        st = dict(self.cfg["mech"])
+        st = dict(o.cm)
         obs = {
             "type": "obs", "tick": self.tick, "t": round(self.t, 2), "alive": alive_n,
             "self": {"id": o.id, "pos": [o.x, o.y, o.z], "vel": [o.vx, o.vy, 0.0], "aim": [o.yaw, o.pitch],
                      "hp": o.hp, "max_hp": o.max_hp, "energy": o.energy, "max_energy": o.max_energy,
-                     "grounded": True, "cubes": o.cubes, "upgrades": [], "in_zone": o.in_zone,
+                     "grounded": True, "cubes": o.cubes, "upgrades": [k for k, n in o.ups.items() for _ in range(n)], "in_zone": o.in_zone,
                      "weapons": [{"kind": "gun", "cooldown": max(0.0, o.cool), "ammo": o.ammo,
-                                  "reload": max(0.0, o.reload_t), "stats": dict(self.cfg["weapons"]["gun"])}, None],
+                                  "reload": max(0.0, o.reload_t), "stats": dict(o.gun)}, None],
                      "stats": st},
             "mechs": mechs, "projectiles": projs, "crates": [{"id": c["id"], "pos": [c["x"], c["y"], c["z"]], "hp": c["hp"]} for c in self.crates
                                                   if self.sees(o, c["x"], c["y"])],
             "cubes": [{"id": c["id"], "pos": [c["x"], c["y"], c["z"]]} for c in self.cube_list
                                                  if self.sees(o, c["x"], c["y"])], "pickups": [],
-            "sounds": o.sounds, "beams": [], "events": o.events, "drops": [], "zone": zone, "offer": None,
+            "sounds": o.sounds, "beams": [], "events": o.events, "drops": [], "zone": zone, "offer": self.offer_obs(o),
         }
         o.sounds, o.events = [], []
         return obs
@@ -466,6 +522,7 @@ class Match:
                 a = {k: m.cmd[k] for k in ("move", "boost", "aim")}
             m.act_ms.append((time.perf_counter() - s) * 1000)
             mv = a.get("move", [0, 0])
+            self.resolve_offer(m, a.get("pick"))
             m.cmd = {"move": [float(mv[0]), float(mv[1])], "boost": bool(a.get("boost", False)),
                      "aim": a.get("aim", m.cmd["aim"]), "fire": list(a.get("fire", [False, False])),
                      "reload": bool(a.get("reload", False))}
@@ -478,6 +535,8 @@ class Match:
                 return  # no friendly fire in the squad
             if self.is_house(victim):
                 self.provoked[victim.id] = self.t
+        if weapon != "zone":
+            amount *= max(0.0, 1.0 - victim.armor)
         victim.hp -= amount
         victim.last_combat = self.t
         ev = {"type": "damaged", "amount": round(amount, 1), "weapon": weapon, "bearing": bearing,
@@ -498,10 +557,10 @@ class Match:
                     self.cand_kills += 1
 
     def physics(self):
-        cm = self.cfg["mech"]
         for m in self.mechs:
             if not m.alive:
                 continue
+            cm = m.cm
             # aim slew
             ty, tp = float(m.cmd["aim"][0]), max(cm["min_pitch"], min(cm["max_pitch"], float(m.cmd["aim"][1])))
             dy = angdiff(ty, m.yaw)
@@ -638,8 +697,8 @@ class Match:
                 continue
             if not m.in_zone:
                 self.damage(m, dps * DT, None, None, "zone")
-            elif self.t - m.last_combat >= self.cfg["mech"]["regen_delay"]:
-                m.hp = min(m.max_hp, m.hp + self.cfg["mech"]["regen_per_s"] * DT)
+            elif self.t - m.last_combat >= m.cm["regen_delay"]:
+                m.hp = min(m.max_hp, m.hp + m.cm["regen_per_s"] * DT)
 
     def run(self):
         dur = self.cfg["match"]["duration_s"]
@@ -708,7 +767,7 @@ def one_match(args):
     out = []
     for i in slots:
         me = m.mechs[i]
-        out.append({"place": places[i], "kills": m.cand_kills, "cubes": me.cubes, "death_t": None if me.alive else round(me.death_tick * DT, 1),
+        out.append({"place": places[i], "kills": m.cand_kills, "cubes": me.cubes, "ups": dict(me.ups), "death_t": None if me.alive else round(me.death_tick * DT, 1),
                     "zone_death": (not me.alive) and me.events[-1:] and me.events[-1].get("weapon") == "zone",
                     "max_ms": max(me.act_ms) if me.act_ms else 0, "errors": me.errors})
     return out

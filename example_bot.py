@@ -36,7 +36,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "seek", "focus", "strafe2", "crates"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "seek", "focus", "strafe2", "crates", "uptank"}
 
 
 def flag(name):
@@ -70,6 +70,12 @@ def _angdiff(a, b):
 LOOT_RANK = {"mortar": 3, "lightning": 2, "laser": 1, "gun": 0}  # laser last: charging halves speed
 UPGRADE_PREF = ["servos", "jets", "armor", "capacitor", "nanites", "reactor", "gyros",
                 "gun_velocity", "gun_rate", "mortar_velocity", "lightning_range", "plating"]
+_WEAPON_UPS = ["mortar_reload", "mortar_velocity", "mortar_splash", "lightning_efficiency", "lightning_range",
+               "lightning_chain", "laser_charge", "laser_damage", "laser_pierce"]
+UP_POWER = ["gun_damage", "gun_rate", "armor", "plating", "nanites", "gun_mag", "servos", "gun_velocity",
+            "gyros", "jets", "capacitor", "reactor", "sensors"] + _WEAPON_UPS
+UP_TANK = ["armor", "plating", "nanites", "gun_damage", "gun_rate", "servos", "gun_mag", "gun_velocity",
+           "gyros", "jets", "capacitor", "reactor", "sensors"] + _WEAPON_UPS
 
 
 def _lead(me, tgt, speed):
@@ -911,8 +917,8 @@ class Bot:
         # ---- upgrades: speed and energy first, then survival ----
         if obs["offer"]:
             ids = [c["id"] for c in obs["offer"]["choices"]]
-            act["pick"] = min(range(len(ids)),
-                              key=lambda i: UPGRADE_PREF.index(ids[i]) if ids[i] in UPGRADE_PREF else 99)
+            pref = UP_POWER if flag("uppower") else UP_TANK if flag("uptank") else UPGRADE_PREF
+            act["pick"] = min(range(len(ids)), key=lambda i: pref.index(ids[i]) if ids[i] in pref else 99)
 
         # ---- loot: take or swap in anything better within reach; remember a better one in sight ----
         cur1 = me["weapons"][1] if len(me["weapons"]) > 1 else None

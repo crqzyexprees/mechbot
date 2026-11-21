@@ -1,0 +1,10 @@
+
+=== confirm, 192 fresh matches each, seeds 980000+ (316 s)
+  A+uppower                        score  4.11 ± 0.30  kills 3.31  median death   302 s  worst tick 13.7 ms  (n=192)
+  A+uptank                         score  3.89 ± 0.28  kills 3.24  median death   302 s  worst tick 13.5 ms  (n=192)
+  A                                score  3.69 ± 0.26  kills 3.15  median death   302 s  worst tick 14.0 ms  (n=192)
+  A                                mean cubes held at end 4.49
+  A+uppower                        mean cubes held at end 4.56
+  A+uptank                         mean cubes held at end 4.61
+  A+uppower - A = +0.42 ± 0.39  (+1.1 s.e.)  not clearly better
+  A+uptank - A = +0.20 ± 0.38  (+0.5 s.e.)  not clearly better
