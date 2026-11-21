@@ -280,3 +280,5 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - reloadduck (sidestep up to 7 m behind the corner during a reload): sim +0.02 ± 0.30 (`pair_r11.txt`),
   far hide (peekreload) -0.62 ± 0.31. The sim's house bots hit only ~7%, so it undervalues cover. Off.
 - Next real test: laserblend on the 4.42 version.
+- Real: BB-760245D5, ed9e70d (4.42 version + laserblend): **4.27**, -0.15 (about noise, not better). Off.
+  main is back to the 4.42 behaviour.
