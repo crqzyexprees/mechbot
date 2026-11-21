@@ -262,3 +262,5 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Paired, 192 fresh seeds (`sim/pair_r6.txt`): tol3+muzzlecheck+peekstep score +0.68 ± 0.33, hit rate
   49.6 -> 54.0% (+3.4 ± 0.9), damage dealt +792 ± 225 per match, shots into cover 11.4 -> 6.3%. On.
   Neutral or worse: peekreload, tol2, farhold, aimsize, upservo, dodge25, holdlead, strafe2, aimlat.
+- Real: BB-92DD517F, 70e5d61 (4.15 version + tol3 + muzzlecheck + peekstep): **4.42**, new best (+0.27),
+  entered in the final. First sim-picked change to win for real since the calibration and repeatable sim.
