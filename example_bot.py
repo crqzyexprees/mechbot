@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead85"}
 
 
 def flag(name):
@@ -478,6 +478,7 @@ class Bot:
         self.strafe_side = 1
         self.strafe_until = 0.0
         self.zone_boosting = False
+        self.vema = {}            # enemy id -> smoothed (vx, vy, vz, t)
         self.zone_live = False    # does the server already send the interpolated circle?
         self.last_zone = None
         self.field = None         # FlowField toward the next circle's safe disk
@@ -1007,7 +1008,24 @@ class Bot:
         # gun: lead the target; pull the trigger whenever the actual aim is on the lead point
         if "gun" in W:
             st = W["gun"]["stats"]
-            gyaw, gpitch, gd = _lead(me, tgt, st["speed"])
+            gme, gtgt = me, tgt
+            if flag("aimlat") or flag("aimavg"):
+                # aimlat: the shot leaves ~0.075 s after this observation (the action runs for 2 ticks), so
+                # move both ends on by that much; aimavg: lead with the target's smoothed velocity, since
+                # a strafing mech reverses every second or so and its current velocity overshoots
+                lat = 0.075 if flag("aimlat") else 0.0
+                tv = tgt["vel"]
+                if flag("aimavg") and tgt["id"] in self.vema:
+                    tv = self.vema[tgt["id"]][:3]
+                mv = me["vel"]
+                gme = dict(me, pos=[me["pos"][i] + mv[i] * lat for i in range(3)])
+                gtgt = dict(tgt, pos=[tgt["pos"][i] + tv[i] * lat for i in range(3)], vel=list(tv))
+            # leadk: lead only part of the target's motion; a strafing mech often turns back while the
+            # bullet flies, and a full lead then passes in front of it
+            k = 0.5 if flag("lead50") else 0.7 if flag("lead70") else 0.85 if flag("lead85") else 1.0
+            if k < 1.0:
+                gtgt = dict(gtgt, vel=[gtgt["vel"][0] * k, gtgt["vel"][1] * k, gtgt["vel"][2]])
+            gyaw, gpitch, gd = _lead(gme, gtgt, st["speed"])
             if aim is None:
                 aim, tag = (gyaw, gpitch), "gun"
             if gd < st["range"] and _aimed(me, gyaw, gpitch, gd, 2.5) and not blind:
@@ -1083,6 +1101,14 @@ class Bot:
         enemies = sorted((m for m in obs["mechs"] if m["kind"] == "mech"),
                          key=lambda m: math.dist(m["pos"], me["pos"]))
         seen = {m["id"] for m in obs["mechs"]}
+        a_ = 1.0 - math.exp(-0.1 / 0.4)  # smoothed enemy velocity, time constant 0.4 s
+        for m in enemies:
+            pv = self.vema.get(m["id"])
+            v = m["vel"]
+            if pv is None or t - pv[3] > 0.5:
+                self.vema[m["id"]] = (v[0], v[1], v[2], t)
+            else:
+                self.vema[m["id"]] = (pv[0] + a_ * (v[0] - pv[0]), pv[1] + a_ * (v[1] - pv[1]), v[2], t)
 
         # ---- events: unseen attackers (face them: rear hits do 1.5x), concussion ----
         for ev in obs.get("events") or []:

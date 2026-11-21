@@ -1,0 +1,10 @@
+
+=== confirm, 192 fresh matches each, seeds 1500000+ (284 s)
+  k70                              score  5.29 ± 0.33  kills 4.17  median death   295 s  worst tick 15.8 ms  (n=192)
+  k85                              score  4.76 ± 0.30  kills 3.95  median death   296 s  worst tick 16.5 ms  (n=192)
+  full                             score  4.38 ± 0.29  kills 3.64  median death   301 s  worst tick 16.3 ms  (n=192)
+  full                             mean cubes held at end 5.81  zone deaths 26/192
+  k70                              mean cubes held at end 6.73  zone deaths 29/192
+  k85                              mean cubes held at end 6.08  zone deaths 32/192
+  k70 - full = +0.92 ± 0.44  (+2.1 s.e.)  BETTER
+  k85 - full = +0.39 ± 0.42  (+0.9 s.e.)  not clearly better

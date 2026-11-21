@@ -626,7 +626,14 @@ class Match:
                 yaw, pit = m.yaw + self.rng.gauss(0, sp_), m.pitch + self.rng.gauss(0, sp_)
                 dx, dy_, dz = math.cos(pit) * math.cos(yaw), math.cos(pit) * math.sin(yaw), math.sin(pit)
                 ox, oy, oz = m.x + dx * (r + 0.5), m.y + dy_ * (r + 0.5), m.z + cm["muzzle_height"] + dz * (r + 0.5)
-                self.bullets.append({"id": self.tick * 100 + m.id, "owner": m, "x": ox, "y": oy, "z": oz,
+                # aim stats: band by distance to the nearest live opponent (4 = none within gun range)
+                opp_ = [(math.hypot(o.x - m.x, o.y - m.y), o) for o in self.mechs if o.alive and o is not m
+                        and not (self.squad is not None and self.is_house(m) and self.is_house(o))]
+                dn, tgt_ = min(opp_, key=lambda q: q[0], default=(1e9, None))
+                band = 0 if dn < 50 else 1 if dn < 100 else 2 if dn < 150 else 3 if dn < 230 else 4
+                st_ = m.__dict__.setdefault("aimst", {"shots": [0] * 5, "hits": [0] * 5, "walls": [0] * 5, "crates": [0] * 5, "blocked": [0] * 5})
+                st_["shots"][band] += 1
+                self.bullets.append({"id": self.tick * 100 + m.id, "owner": m, "x": ox, "y": oy, "z": oz, "band": band, "dn": dn, "trav": 0.0, "tgt": tgt_, "best": (1e9, 0.0, 0.0), "tv0": ((tgt_.vx, tgt_.vy) if tgt_ is not None else (0.0, 0.0)),
                                      "vx": dx * g["speed"], "vy": dy_ * g["speed"], "vz": dz * g["speed"], "left": g["range"]})
                 m.ammo -= 1
                 m.cool = g["cooldown"]
@@ -652,6 +659,19 @@ class Match:
                 cx, cy, cz = sx + (ex - sx) * f, sy + (ey - sy) * f, sz + (ez - sz) * f
                 if math.hypot(m.x - cx, m.y - cy) < self.rad(m) + 0.3 and m.z - 0.3 <= cz <= m.z + self.hgt(m) + 0.3 and f < best:
                     hit, best = m, f
+            tg = b.get("tgt")
+            if tg is not None and tg.alive:
+                px, py = tg.x - sx, tg.y - sy
+                L2 = (ex - sx) ** 2 + (ey - sy) ** 2
+                f = max(0.0, min(1.0, (px * (ex - sx) + py * (ey - sy)) / L2)) if L2 > 0 else 0.0
+                cx, cy, cz = sx + (ex - sx) * f, sy + (ey - sy) * f, sz + (ez - sz) * f
+                dd = math.hypot(cx - tg.x, cy - tg.y)
+                if dd < b["best"][0]:
+                    v0x, v0y = b["tv0"]  # the target's velocity when we fired
+                    sp = math.hypot(v0x, v0y)
+                    along = ((cx - tg.x) * v0x + (cy - tg.y) * v0y) / sp if sp > 1.0 else 0.0
+                    rev = (v0x * tg.vx + v0y * tg.vy) < 0  # it turned back since
+                    b["best"] = (dd, along, cz - (tg.z + self.hgt(tg) / 2), rev, sp)
             crate_hit = None
             for c in self.crates:
                 px, py = c["x"] - sx, c["y"] - sy
@@ -669,9 +689,22 @@ class Match:
                 if self.w.blocked(sx + (ex - sx) * f, sy + (ey - sy) * f):
                     wall = True
                     break
+            ast_ = b["owner"].__dict__.get("aimst")
+            def _rec_miss(b=b, ast_=ast_):
+                if ast_ is not None and b["band"] == 1 and b["best"][0] < 12.0:
+                    ast_.setdefault("miss_along", []).append(round(b["best"][1], 1))
+                    ast_.setdefault("miss_z", []).append(round(b["best"][2], 1))
+                    ast_.setdefault("miss_rev", []).append(bool(b["best"][3]) if len(b["best"]) > 3 else False)
+                    ast_.setdefault("miss_sp", []).append(round(b["best"][4], 1) if len(b["best"]) > 4 else 0.0)
             if wall:
+                _rec_miss()
+                if ast_:
+                    ast_["walls"][b["band"]] += 1
+                    if b["trav"] + seg * f < b["dn"] - 4.0:  # stopped short of the target: fired into cover
+                        ast_["blocked"][b["band"]] += 1
                 continue
             if crate_hit is not None:
+                if ast_: ast_["crates"][b["band"]] += 1
                 dmg = b["owner"].gun["damage"] * (1 + self.cube_cfg["dmg"] * min(b["owner"].cubes, self.cube_cfg["cap"]))
                 crate_hit["hp"] -= dmg
                 b["owner"].events.append({"type": "hit", "target": crate_hit["id"], "amount": round(dmg, 1), "weapon": "gun"})
@@ -681,6 +714,7 @@ class Match:
                     self.cube_list.append({"id": self.cube_id, "x": crate_hit["x"], "y": crate_hit["y"], "z": crate_hit["z"]})
                 continue
             if hit is not None:
+                if ast_: ast_["hits"][b["band"]] += 1
                 src = math.atan2(-b["vy"], -b["vx"])  # direction the bullet came from
                 rear = abs(angdiff(src, hit.yaw)) > math.radians(self.cfg["mech"]["front_arc_deg"]) / 2
                 dmg = b["owner"].gun["damage"] * (self.cfg["mech"]["rear_mult"] if rear else 1.0)
@@ -688,7 +722,9 @@ class Match:
                 self.damage(hit, dmg, b["owner"], round(src, 3), "gun", rear)
                 continue
             b["left"] -= seg
+            b["trav"] = b.get("trav", 0.0) + seg
             if b["left"] <= 0 or ez < self.w.ground(ex, ey) - 0.5:
+                _rec_miss()
                 continue
             b["x"], b["y"], b["z"] = ex, ey, ez
             keep.append(b)
@@ -779,7 +815,9 @@ def one_match(args):
                     "max_ms": max(me.act_ms) if me.act_ms else 0, "errors": me.errors,
                     "kill_ts": getattr(me, "kill_ts", []),
                     "attackers10": len({b for (tt, b) in getattr(me, "hit_log", []) if me.death_tick is not None and me.death_tick * DT - tt < 10}),
-                    "hunters_alive": sum(1 for x in m.mechs if x.alive and x.id != me.id)})
+                    "hunters_alive": sum(1 for x in m.mechs if x.alive and x.id != me.id),
+                    "aimst": me.__dict__.get("aimst"),
+                    "house_aimst": [x.__dict__.get("aimst") for x in m.mechs if x is not me]})
     return out
 
 

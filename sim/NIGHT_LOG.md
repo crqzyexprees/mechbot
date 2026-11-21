@@ -232,3 +232,15 @@ game mechanics the sim models faithfully, and judge real results on more than on
   matter in lightning fights. arcsave off.
 - `lootfar2`: walk up to 100 m (was 40) for lightning or a laser when no enemy is within 80 m, any time.
 - Real: BB-E5A03109, 47f437b (4.15 version + lootfar2): **4.10**, within noise of 4.15, not better. lootfar2 off.
+
+## Aim (sim hit stats: `sim/aimstat.py`, `sim/missdir.py`)
+
+- Our gun in the sim: 86% hits under 50 m, 45-47% at 50-100 m (62% of our shots), 28-30% at 100-150 m.
+  holdfire cut shots into cover at 50-100 m from 20% to 6%.
+- Misses at 50-100 m, against the target's velocity when fired: 40% pass 3-6 m ahead, 23% 3-6 m behind;
+  46% of misses had the target turn back during the flight. A full lead overshoots strafing mechs.
+- aimlat (+0.075 s latency) and aimavg (0.4 s smoothed velocity) both lowered hits (45.5% -> 37.6%, 40.0%): off.
+- Partial lead (96 matches, hits at 50-100 m / overall): full 47.1 / 52.7%, 0.85 52.6 / 56.2%, 0.7 54.2 / 57.7%,
+  0.5 44.3 / 51.3%. Score, 192 fresh matches (`sim/confirm_r16.txt`): 0.7 lead 5.29 ± 0.33 vs full 4.38 ± 0.29,
+  +0.92 ± 0.44 (+2.1 s.e.); 0.85 +0.39 (0.9 s.e.). lead70 on. Caveat: the sim's house bots strafe with
+  our old code (turning every 0.45-1.1 s); the real ones may move differently.
