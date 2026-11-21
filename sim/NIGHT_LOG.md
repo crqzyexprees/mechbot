@@ -282,3 +282,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Next real test: laserblend on the 4.42 version.
 - Real: BB-760245D5, ed9e70d (4.42 version + laserblend): **4.27**, -0.15 (about noise, not better). Off.
   main is back to the 4.42 behaviour.
+- Real test: reloadduck on the 4.42 version (only difference).
