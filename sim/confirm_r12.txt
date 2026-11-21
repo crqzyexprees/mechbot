@@ -1,0 +1,13 @@
+
+=== confirm, 384 fresh matches each, seeds 2000000+ (864 s)
+  regroup                          score  5.01 ± 0.22  kills 3.93  median death   302 s  worst tick 18.6 ms  (n=384)
+  base                             score  4.97 ± 0.23  kills 3.82  median death   301 s  worst tick 16.3 ms  (n=384)
+  outnumbered                      score  3.65 ± 0.19  kills 3.07  median death   302 s  worst tick 16.8 ms  (n=384)
+  hide                             score  2.40 ± 0.14  kills 2.11  median death   313 s  worst tick 16.9 ms  (n=384)
+  base                             mean cubes held at end 6.41  zone deaths 46/384
+  regroup                          mean cubes held at end 6.41  zone deaths 46/384
+  hide                             mean cubes held at end 3.19  zone deaths 48/384
+  outnumbered                      mean cubes held at end 4.99  zone deaths 47/384
+  regroup - base = +0.04 ± 0.32  (+0.1 s.e.)  not clearly better
+  hide - base = -2.58 ± 0.27  (-9.5 s.e.)  not clearly better
+  outnumbered - base = -1.32 ± 0.30  (-4.4 s.e.)  not clearly better

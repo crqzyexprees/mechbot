@@ -24,7 +24,8 @@ than the ±0.4 I first assumed. So focus + strafe2 (3.19, 3.10 vs 3.31-3.56) rea
 | BB-8216156A | 2e8d5c2 | ed981aa + drones (snipe NPC drones for cubes) | (sim has no NPCs) | **4.06** (best, +0.10) |
 | BB-D46D4999 | 39da462 | 2e8d5c2 + cratego: walk to crates when idle, shoot them from 90 m | +0.23 ± 0.29 (sim) | 3.96 (no gain, off) |
 | BB-491F2EED | eac4376 | 2e8d5c2 + terrain-aware walls + radius-aware routes | neutral, fewer zone deaths | 3.77 (worse, both off) |
-| next | steerwp | 2e8d5c2 + steering looks only as far as the route waypoint | +0.31 ± 0.22 (sim, 768) | real test |
+| BB-6F48C004 | 2025b71 | 2e8d5c2 + steering looks only as far as the route waypoint | +0.31 ± 0.22 (sim, 768) | 3.98 (neutral; kept, correct fix) |
+| next | regroup | 2025b71 + regroup: heal to 85% out of sight between fights | +0.04 ± 0.32 (sim) | real test |
 
 ### Change of method (03:55)
 Sim vs real so far: aggressive +0.44 / +0.35, cubes +0.71 / +0.25 (vs 3.31), focus+strafe2 +0.85 / -0.12 and
@@ -164,3 +165,17 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - r11b (seeds 1900000+, `sim/confirm_r11b.txt`): 4.57 vs 4.52, +0.05 ± 0.30; zone deaths 63 -> 57.
 - Pooled 768: +0.31 ± 0.22 (+1.4 s.e.), zone deaths 124 -> 110. Under the bar, but a narrow bug fix that only
   touches route-following, and slots are free, so it goes to a real test (terrain, inflate off).
+- Real: 2025b71 (steerwp) 3.98: within noise of 4.06 (the 39da462/ed981aa family also scored 3.96).
+  steerwp stays on as a correct bug fix.
+
+## Where we stand (06:10)
+- Leaderboard: 222 teams, top 5.96, about 5.2 needed for the top 32 (qualifying). We are at 4.06, around rank 100.
+- Rules recap: house bots never fight each other and hunt us, so score ~ how many die before us ~ our kills.
+  Small tweaks are inside scorer noise; we need about +1, so the next changes target duels and survival
+  between hunters (HP regen 45/s after 5 s undamaged: full heal in ~31 s).
+
+### Round 12 (disengage flags): `sim/confirm_r12.txt`
+- regroup (heal to 85% out of sight between fights), hide, outnumbered: each alone on the current base.
+- 384 fresh each: regroup 5.01, base 4.97 (+0.1 s.e.), outnumbered 3.65 (-4.4 s.e.), hide 2.40 (-9.5 s.e.).
+  Zone deaths with steerwp on are down to 46/384. Hiding costs kills, and kills are the score.
+- regroup goes to a real test (the sim misjudged several fight-behaviour changes before).
