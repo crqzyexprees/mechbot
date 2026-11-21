@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego"}
 
 
 def flag(name):
@@ -529,6 +529,7 @@ class Bot:
         self.roof_bad = {}        # roof index -> t until which we don't retry it
         self.crate_id = None      # crate we're shooting open for its cube
         self.drone_id = None      # NPC drone we're sniping for its 2 cubes
+        self.drones_seen = {}     # NPC drone id -> (x, y, z, t) of its last sighting, for dronego
         self.tgt_since = -99.0
 
     # ---------------------------------------------------------------------------- zone model
@@ -1372,6 +1373,38 @@ class Bot:
             if best is not None:
                 mode = "hunt"
                 gx, gy, pull = *_norm(best[1] - x, best[2] - y), 1.0
+
+        # dronego: idle and safe: walk toward a drone we saw earlier (2 cubes each, 12 per match, they never
+        # leave home by more than 30 m) until it's in snipe range with line of sight; the drone snipe below
+        # does the shooting
+        for m in obs["mechs"]:
+            if m["kind"] == "npc":
+                self.drones_seen[m["id"]] = (m["pos"][0], m["pos"][1], m["pos"][2], t)
+        if (flag("dronego") and flag("drones") and mode in ("safe", "cover") and not enemies and not risk
+                and me["hp"] >= 0.6 * me["max_hp"]):
+            vis_npc = {m["id"] for m in obs["mechs"] if m["kind"] == "npc"}
+            nc = zone["next_center"]
+            best = None
+            for did, (dx_, dy_, dz_, dt_) in list(self.drones_seen.items()):
+                d = math.hypot(dx_ - x, dy_ - y)
+                los = self.grid is None or self.grid.los(x, y, dx_, dy_)
+                if did not in vis_npc and d < 90 and los:
+                    del self.drones_seen[did]  # we should see it from here: it's dead (or wandered off)
+                    continue
+                if t - dt_ > 150 or abs(dz_ - z) > 12:
+                    continue
+                if math.hypot(dx_ - nc[0], dy_ - nc[1]) > zone["next_radius"] - 10:
+                    continue
+                if d > 260:
+                    continue
+                if did in vis_npc and los and 75 < d < 150:
+                    continue  # the snipe has it from here
+                if best is None or d < best[0]:
+                    best = (d, dx_, dy_)
+            if best is not None and best[0] > 75:
+                mode = "dronego"
+                gx, gy = _norm(best[1] - x, best[2] - y)
+                pull = 1.0
 
         # cratego: idle and safe: walk toward the nearest ground crate in view until it's in easy range
         if flag("cratego") and flag("crates") and mode in ("safe", "cover") and not enemies and not risk:

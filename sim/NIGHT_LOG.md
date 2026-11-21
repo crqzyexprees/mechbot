@@ -297,3 +297,17 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Candidate: 4.42 + lead85. check.py PASS locally and in the container. Waiting on the user's approval to push and submit.
 - 17:06 pushed and submitted 1d49460 (lead85 on), receipt BB-3E5870E7. Leaderboard check: top-32 cut is now about 6.00 (rank 32 = 6.00), up from 5.27.
 - BB-3E5870E7 (1d49460, lead85) scored 3.94 (vs 4.42). Sim was wrong again on a lead change: both house-bot settings predicted a gain. Lead changes now treated as sim-untestable.
+
+## Nov 21, evening — where the points go (sim/life.py, sim/waste.py)
+- Seeds 3400000, 96 matches, 4.42 behaviour. realmove: score 5.77, kills 4.33; cur: 5.09, kills 3.96.
+- Matches are nearly all-or-nothing: survive to the end = 15 points (18/96), otherwise points = our kills
+  (combat death mean 4.0, zone death 1.3, 11/96 zone deaths). 40 of 67 combat deaths come in minute 5, after the
+  whole squad starts hunting at 300 s.
+- Sim house bots die to the zone a lot: per match 8.4 after our death, 1.4 before it. Real 4.42 is close to sim
+  kills (4.3), so the real house bots probably do not; sim scores are inflated by those zone deaths.
+- Our damage: 67% on bots we killed (1842 per kill), 33% on bots we never killed. Of that 33%, 61% is the fight we
+  died in; escapes (bots that got away and healed) are about 1500 per match, under one kill.
+- Sim now has NPC drones (SIM_NPC=1 default; 12 drones, wander/aggro/chase, 25-damage shots, 2 cubes each).
+  Note: drones also hit house bots, which inflates sim scores further (7.4 vs 5.8).
+- dronego (walk to drones seen earlier when idle, then the snipe takes over): 96 paired seeds 3600000:
+  +0.53 ± 0.39, drone kills 1.0 -> 1.25 per match (8-match smoke test). Off by default.

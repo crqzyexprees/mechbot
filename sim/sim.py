@@ -267,6 +267,7 @@ class Match:
                          "dmg": cc.get("damage_per_cube", 0.04), "cap": cc.get("stat_cap", 10),
                          "extra": cc.get("death_drop_extra", 2), "size": cc.get("size_per_cube", 0.05)}
         self.crates = self.spawn_crates(seed)
+        self.npcs = self.spawn_npcs(seed) if os.environ.get("SIM_NPC", "1") == "1" else []
         self.tick = 0
         self.t = 0.0
         self.house = (squad or {}).get("house", {})
@@ -464,6 +465,87 @@ class Match:
                 self.queue_offer(best)
         self.cube_list = keep
 
+    def spawn_npcs(self, seed):
+        """NPC drones: wander within leash of home, shoot attackers or mechs within aggro range, drop cubes."""
+        nc = self.cfg.get("npc", {})
+        rng = random.Random(seed * 11 + 5)
+        cx, cy = self.cfg["zone"]["start_center"]
+        R = self.cfg["zone"]["start_radius"]
+        out = []
+        for k in range(int(nc.get("count", 12))):
+            for _ in range(500):
+                a, d = rng.uniform(-math.pi, math.pi), math.sqrt(rng.random()) * R
+                x, y = cx + math.cos(a) * d, cy + math.sin(a) * d
+                if self.w.x0 + 30 < x < self.w.x1 - 30 and self.w.y0 + 30 < y < self.w.y1 - 30 \
+                        and not self.w.body_blocked(x, y, 3.0):
+                    break
+            out.append({"id": 100 + k, "x": x, "y": y, "z": self.w.ground(x, y), "hx": x, "hy": y, "hp": float(nc.get("hp", 350)),
+                        "vx": 0.0, "vy": 0.0, "tgt": None, "cool": 0.0, "wx": x, "wy": y, "rng": random.Random(seed * 31 + k)})
+        return out
+
+    def step_npcs(self):
+        nc = self.cfg.get("npc", {})
+        sp, leash, chase = nc.get("speed", 5), nc.get("leash", 30), nc.get("chase_leash", 60)
+        aggro, deaggro = nc.get("aggro_range", 45), nc.get("deaggro_range", 90)
+        for n in self.npcs:
+            home_d = math.hypot(n["x"] - n["hx"], n["y"] - n["hy"])
+            t = n["tgt"]
+            if t is not None and (not t.alive or math.hypot(t.x - n["x"], t.y - n["y"]) > deaggro or home_d > chase):
+                t = n["tgt"] = None
+            if t is None and home_d < leash:
+                best = None
+                for m in self.mechs:
+                    if m.alive:
+                        d = math.hypot(m.x - n["x"], m.y - n["y"])
+                        if d < aggro and (best is None or d < best[0]) and self.w.los(n["x"], n["y"], m.x, m.y):
+                            best = (d, m)
+                if best is not None:
+                    t = n["tgt"] = best[1]
+            if t is not None:
+                gx, gy = t.x, t.y
+            elif home_d > leash * 0.8:
+                gx, gy = n["hx"], n["hy"]
+            else:
+                if math.hypot(n["wx"] - n["x"], n["wy"] - n["y"]) < 2.0:
+                    a, d = n["rng"].uniform(-math.pi, math.pi), n["rng"].uniform(0, leash * 0.8)
+                    n["wx"], n["wy"] = n["hx"] + math.cos(a) * d, n["hy"] + math.sin(a) * d
+                gx, gy = n["wx"], n["wy"]
+            dx, dy = gx - n["x"], gy - n["y"]
+            dd = math.hypot(dx, dy)
+            v = sp * (0.5 if t is None else 1.0)
+            if t is not None and dd < 25:
+                v = 0.0  # in range: hover and shoot
+            n["vx"], n["vy"] = (dx / dd * v, dy / dd * v) if dd > 1e-6 else (0.0, 0.0)
+            nx, ny = n["x"] + n["vx"] * DT, n["y"] + n["vy"] * DT
+            if not self.w.body_blocked(nx, ny, 1.8):
+                n["x"], n["y"] = nx, ny
+                n["z"] = self.w.ground(nx, ny)
+            else:
+                n["wx"], n["wy"] = n["x"], n["y"]
+            n["cool"] -= DT
+            if t is not None and n["cool"] <= 0:
+                d = math.hypot(t.x - n["x"], t.y - n["y"])
+                if d < deaggro and self.w.los(n["x"], n["y"], t.x, t.y):
+                    n["cool"] = nc.get("cooldown", 1)
+                    # 2.5 deg spread and a 90 m/s bullet: chance to land on a moving mech
+                    sig = max(0.1, d * math.tan(math.radians(nc.get("spread_deg", 2.5))))
+                    p = math.erf(self.rad(t) / (sig * math.sqrt(2)))
+                    tf = d / nc.get("projectile_speed", 90)
+                    p *= max(0.1, 1.0 - math.hypot(t.vx, t.vy) * tf / (2 * self.rad(t) + 2))
+                    if self.rng.random() < p:
+                        self.damage(t, nc.get("damage", 25), None, round(math.atan2(n["y"] - t.y, n["x"] - t.x), 3), "npc")
+
+    def npc_hit(self, n, dmg, owner):
+        n["hp"] -= dmg
+        n["tgt"] = owner
+        owner.events.append({"type": "hit", "target": n["id"], "amount": round(dmg, 1), "weapon": "gun"})
+        if n["hp"] <= 0:
+            self.npcs.remove(n)
+            owner.__dict__["npc_kills"] = owner.__dict__.get("npc_kills", 0) + 1
+            for k in range(int(self.cfg.get("npc", {}).get("cubes", 2))):
+                self.cube_id += 1
+                self.cube_list.append({"id": self.cube_id, "x": n["x"] + (k - 0.5) * 1.5, "y": n["y"], "z": n["z"]})
+
     def sees(self, o, x, y):
         v = self.cfg["vision"]
         d = math.hypot(x - o.x, y - o.y)
@@ -499,6 +581,12 @@ class Match:
                 mechs.append({"id": m.id, "kind": "mech", "pos": [m.x, m.y, m.z], "vel": [m.vx, m.vy, 0.0],
                               "aim": [m.yaw, m.pitch], "hp": m.hp, "max_hp": m.max_hp, "cubes": m.cubes,
                               "weapons": ["gun"], "charging": False})
+        for n in self.npcs:
+            if self.sees(o, n["x"], n["y"]):
+                o.seen[n["id"]] = self.t
+            if self.t - o.seen.get(n["id"], -99) <= self.cfg["vision"].get("memory_s", 5):
+                mechs.append({"id": n["id"], "kind": "npc", "pos": [n["x"], n["y"], n["z"]], "vel": [n["vx"], n["vy"], 0.0],
+                              "aim": [0.0, 0.0], "hp": n["hp"], "max_hp": float(self.cfg.get("npc", {}).get("hp", 350))})
         projs = []
         for b in self.bullets:
             if b["owner"] is o or (house_o and self.is_house(b["owner"])):
@@ -616,6 +704,8 @@ class Match:
             victim.__dict__["taken"] = victim.__dict__.get("taken", 0.0) + amount
             if by is not None:
                 by.__dict__["dealt"] = by.__dict__.get("dealt", 0.0) + amount
+                victim.__dict__["dmg_from"] = victim.__dict__.get("dmg_from", {})
+                victim.dmg_from[by.id] = victim.dmg_from.get(by.id, 0.0) + amount
         if by is not None:
             victim.hit_log = getattr(victim, "hit_log", []) + [(self.t, by.id)]
         ev = {"type": "damaged", "amount": round(amount, 1), "weapon": weapon, "bearing": bearing,
@@ -628,6 +718,7 @@ class Match:
             by.events.append({"type": "hit", "target": victim.id, "amount": round(amount, 1), "weapon": weapon})
         if victim.hp <= 0:
             victim.alive, victim.death_tick = False, self.tick
+            victim.__dict__["death_cause"] = weapon if by is None else ("by%d" % by.id)
             self.emit("death", victim.x, victim.y, victim)
             self.drop_cubes(victim)
             if by is not None:
@@ -753,6 +844,14 @@ class Match:
                 cx, cy, cz = sx + (ex - sx) * f, sy + (ey - sy) * f, sz + (ez - sz) * f
                 if math.hypot(c["x"] - cx, c["y"] - cy) < c["r"] and c["z"] - 0.2 <= cz <= c["z"] + c["h"] and f < best:
                     hit, best, crate_hit = None, f, c
+            npc_hit = None
+            for nn in self.npcs:
+                px, py = nn["x"] - sx, nn["y"] - sy
+                L2 = (ex - sx) ** 2 + (ey - sy) ** 2
+                f = max(0.0, min(1.0, (px * (ex - sx) + py * (ey - sy)) / L2)) if L2 > 0 else 0.0
+                cx, cy, cz = sx + (ex - sx) * f, sy + (ey - sy) * f, sz + (ez - sz) * f
+                if math.hypot(nn["x"] - cx, nn["y"] - cy) < 1.8 and nn["z"] - 0.2 <= cz <= nn["z"] + 3.5 and f < best:
+                    hit, best, crate_hit, npc_hit = None, f, None, nn
             # walls: sample the segment up to the hit point
             stop = best if (hit or crate_hit) else 1.0
             wall = False
@@ -776,6 +875,10 @@ class Match:
                     if b["trav"] + seg * f < b["dn"] - 4.0:  # stopped short of the target: fired into cover
                         ast_["blocked"][b["band"]] += 1
                         ast_.setdefault("block_at", []).append((round(b["trav"] + seg * f, 1), round(b["dn"], 1)))
+                continue
+            if npc_hit is not None:
+                dmg = b["owner"].gun["damage"] * (1 + self.cube_cfg["dmg"] * min(b["owner"].cubes, self.cube_cfg["cap"]))
+                self.npc_hit(npc_hit, dmg, b["owner"])
                 continue
             if crate_hit is not None:
                 if ast_: ast_["crates"][b["band"]] += 1
@@ -827,6 +930,8 @@ class Match:
             if self.tick % every == 0:
                 self.decide()
             self.physics()
+            if self.npcs:
+                self.step_npcs()
             self.tick += 1
             self.t = self.tick * DT
         return self.places()
@@ -896,8 +1001,14 @@ def one_match(args):
                     "hmot": m.__dict__.get("hmot", [])[:3000],
                     "htr": m.__dict__.get("htr", []),
                     "dealt": me.__dict__.get("dealt", 0.0), "taken": me.__dict__.get("taken", 0.0),
+                    "npc_kills": me.__dict__.get("npc_kills", 0), "house_npc_kills": sum(x.__dict__.get("npc_kills", 0) for x in m.mechs if x is not me),
                     "life": round((me.death_tick if me.death_tick is not None else m.tick) * DT, 1),
-                    "house_aimst": [x.__dict__.get("aimst") for x in m.mechs if x is not me]})
+                    "house_aimst": [x.__dict__.get("aimst") for x in m.mechs if x is not me],
+                    "house_fate": [{"cause": x.__dict__.get("death_cause") if not x.alive else None,
+                                    "t": round(x.death_tick * DT, 1) if not x.alive else None,
+                                    "from_me": round(x.__dict__.get("dmg_from", {}).get(me.id, 0.0)),
+                                    "last_hit_me": max([tt for (tt, b) in getattr(x, "hit_log", []) if b == me.id], default=None),
+                                    "max_hp": round(x.max_hp)} for x in m.mechs if x is not me]})
     return out
 
 
