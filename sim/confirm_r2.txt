@@ -1,0 +1,7 @@
+
+=== confirm, 192 fresh matches each, seeds 930000+ (251 s)
+  focus+strafe2                    score  3.65 ± 0.21  kills 3.30  median death   301 s  worst tick 22.4 ms  (n=192)
+  pushed+focus                     score  3.55 ± 0.19  kills 3.32  median death   301 s  worst tick 16.4 ms  (n=192)
+  pushed                           score  2.79 ± 0.18  kills 2.58  median death   301 s  worst tick 16.1 ms  (n=192)
+  pushed+focus - pushed = +0.76 ± 0.27  (+2.8 s.e.)  BETTER
+  focus+strafe2 - pushed = +0.85 ± 0.28  (+3.1 s.e.)  BETTER

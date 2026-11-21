@@ -36,7 +36,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup"}
 
 
 def flag(name):
@@ -383,6 +383,7 @@ class Bot:
         self.hide_t = -99.0
         self.hiding_until = 0.0
         self.tgt_id = None        # current weapons target, kept briefly while still shootable
+        self.regroup = False      # healing up between fights (after a kill, or hurt with nobody on us)
         self.tgt_since = -99.0
 
     # ---------------------------------------------------------------------------- zone model
@@ -581,7 +582,7 @@ class Bot:
         if t >= self.strafe_until:
             if self.rng.random() < 0.75:
                 self.strafe_side = -self.strafe_side
-            self.strafe_until = t + self.rng.uniform(0.45, 1.1)
+            self.strafe_until = t + (self.rng.uniform(0.3, 0.8) if flag("strafe2") else self.rng.uniform(0.45, 1.1))
         return -dy * self.strafe_side, dx * self.strafe_side
 
     # ---------------------------------------------------------------------------- steering
@@ -898,6 +899,8 @@ class Bot:
         for ev in obs.get("events") or []:
             if ev["type"] == "damaged" and ev.get("by") is not None:
                 self.attackers[ev["by"]] = t
+            if ev["type"] == "kill" and flag("regroup") and me["hp"] < 0.85 * me["max_hp"]:
+                self.regroup = True
             if ev["type"] == "damaged" and ev.get("bearing") is not None and ev.get("by") not in seen:
                 self.face = (ev["bearing"], t + 1.5)
             elif ev["type"] == "effect" and ev.get("effect") == "concuss":
@@ -942,6 +945,17 @@ class Bot:
         mode = ("path" if route else "zone") if target is not None else "safe"
         pull = 1.0
         drop_boost = False
+        # regroup: heal to 85% between fights, out of sight, unless someone is shooting at us
+        under_fire = any(t - tt < 3.0 for tt in self.attackers.values())
+        if flag("regroup"):
+            if me["hp"] < 0.45 * me["max_hp"] and not under_fire:
+                self.regroup = True
+            if me["hp"] >= 0.85 * me["max_hp"] or risk:
+                self.regroup = False
+        regroup_spot = None
+        if self.regroup and not risk and not under_fire:
+            threats = [(m["pos"][0], m["pos"][1]) for m in enemies if math.dist(m["pos"][:2], (x, y)) < 230]
+            regroup_spot = self._hide_spot(t, x, y, threats) if threats else self._cover_spot(t, x, y, zone)
         # under fire / outnumbered / hurt: break line of sight behind a building
         hide = None
         if flag("hide") and not risk and enemies:
@@ -951,8 +965,10 @@ class Bot:
                 self.hiding_until = t + 4.0
             if t < self.hiding_until and near:
                 hide = self._hide_spot(t, x, y, [(m["pos"][0], m["pos"][1]) for m in near])
+        if hide is None and regroup_spot is not None:
+            hide = regroup_spot
         if hide is not None:
-            mode = "hide"
+            mode = "hide" if regroup_spot is None or hide is not regroup_spot else "regroup"
             dh = math.hypot(hide[0] - x, hide[1] - y)
             gx, gy = _norm(hide[0] - x, hide[1] - y)
             pull = 1.0 if dh > 2.5 else 0.0
@@ -1015,7 +1031,7 @@ class Bot:
                 k = max(0.0, k)  # back off or hold, never walk toward a fight
             rcx, rcy = ex * k * 1.2, ey * k * 1.2
 
-        if mode == "hide":
+        if mode in ("hide", "regroup"):
             sx = sy = rcx = rcy = 0.0
 
         # travelling to the zone: side moves may not push us backwards; at risk, only sidestep
@@ -1029,8 +1045,9 @@ class Bot:
 
         # blend: zone pull dominates when it is urgent, dodges dominate when a hit is incoming
         zone_w = 2.5 if risk else 1.0
-        mx = gx * pull * zone_w + sx * 0.8 + ddx * 1.8 + rcx
-        my = gy * pull * zone_w + sy * 0.8 + ddy * 1.8 + rcy
+        sw = 1.2 if flag("strafe2") else 0.8
+        mx = gx * pull * zone_w + sx * sw + ddx * 1.8 + rcx
+        my = gy * pull * zone_w + sy * sw + ddy * 1.8 + rcy
         mag = min(1.0, math.hypot(mx, my))
         if enemies or urgency > 0:
             mag = 1.0  # never dawdle under fire
@@ -1076,8 +1093,11 @@ class Bot:
             # direct fire needs a clear line: memory keeps reporting mechs behind walls for 5 s
             clear = {m["id"] for m in enemies if self.grid.los(x, y, m["pos"][0], m["pos"][1])}
             keep = self.tgt_id in clear and t - self.tgt_since < 1.5
+            focus = flag("focus")
             wenemies = sorted(enemies, key=lambda m: (not (keep and m["id"] == self.tgt_id), m["id"] not in clear,
-                                                      m["id"] not in recent, math.dist(m["pos"], me["pos"])))
+                                                      m["id"] not in recent,
+                                                      (m.get("hp", 1e9) if focus and math.dist(m["pos"][:2], (x, y)) < 200 else 1e9),
+                                                      math.dist(m["pos"], me["pos"])))
             if wenemies[0]["id"] != self.tgt_id:
                 self.tgt_id, self.tgt_since = wenemies[0]["id"], t
             elif not keep:
@@ -1093,6 +1113,9 @@ class Bot:
         if not engage:
             act["fire"] = [False, False]  # stay quiet: gunfire carries 320 m
             wtag = "hold"
+        if mode == "regroup" and not under_fire:
+            act["fire"] = [False, False]  # let the 5 s regen timer run
+            wtag = "regroup"
         if flag("heal") and mode == "hide" and me["hp"] < 0.35 * me["max_hp"]:
             act["fire"] = [False, False]  # dealing damage resets the 5 s regen timer too
             wtag = "heal"

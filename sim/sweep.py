@@ -30,7 +30,20 @@ CAUTIOUS = ["discipline", "nochase", "cover", "outnumbered", "hide"]
 FLAGS = ["zonefix", "nochase", "discipline", "outnumbered", "cover", "hide", "sticky", "heal", "reloadpush"]
 
 
+NEW = ["focus", "regroup", "strafe2"]
+BASELINE = "pushed"
+
+
 def variants():
+    """Round 2: the pushed commit (aggressive) vs the new fight switches, alone and together."""
+    v = {"pushed": CAUTIOUS + NEW, "new all": list(CAUTIOUS)}
+    for f in NEW:
+        v[f"pushed + {f}"] = CAUTIOUS + [g for g in NEW if g != f]
+        v[f"new all without {f}"] = CAUTIOUS + [f]
+    return v
+
+
+def variants_round1():
     v = {"all on": []}
     v["aggressive"] = list(CAUTIOUS)
     for f in FLAGS:
@@ -87,7 +100,7 @@ def table(title, res):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--screen", type=int, default=24)
-    ap.add_argument("--keep", type=int, default=4)
+    ap.add_argument("--keep", type=int, default=3)
     ap.add_argument("--more", type=int, default=96)
     ap.add_argument("--confirm", type=int, default=96)
     ap.add_argument("--jobs", type=int, default=os.cpu_count())
@@ -102,23 +115,23 @@ def main():
         jobs = [(lab, p, 900000 + i) for lab, p in paths.items() for i in range(a.screen)]
         res = run(jobs, pool)
         order = table(f"stage 1: screen, {a.screen} matches each ({time.time() - t0:.0f} s)", res)
-        kept = [lab for lab in order if lab != "v1 (submitted)"][:a.keep]
-        # stage 2: contenders (and v1) on fresh seeds, pooled with stage 1
+        kept = [lab for lab in order if lab not in ("v1 (submitted)", BASELINE)][:a.keep] + [BASELINE]
+        # stage 2: contenders (and the baseline, and v1) on fresh seeds, pooled with stage 1
         jobs = [(lab, paths[lab], 910000 + i) for lab in kept + ["v1 (submitted)"] for i in range(a.more)]
         more = run(jobs, pool)
         for lab, rs in more.items():
             res[lab].extend(rs)
         order = table(f"stage 2: contenders, +{a.more} matches ({time.time() - t0:.0f} s)",
                       {lab: res[lab] for lab in kept + ["v1 (submitted)"]})
-        best = [lab for lab in order if lab != "v1 (submitted)"][0]
+        best = [lab for lab in order if lab not in ("v1 (submitted)", BASELINE)][0]
         # stage 3: confirmation on seeds neither stage has used
-        jobs = [(lab, paths[lab], 920000 + i) for lab in (best, "v1 (submitted)") for i in range(a.confirm)]
+        jobs = [(lab, paths[lab], 920000 + i) for lab in (best, BASELINE) for i in range(a.confirm)]
         conf = run(jobs, pool)
-        table(f"stage 3: confirm '{best}' vs v1 on fresh seeds ({time.time() - t0:.0f} s)", conf)
-        (bm, bse, *_), (vm, vse, *_) = stats(conf[best]), stats(conf["v1 (submitted)"])
+        table(f"stage 3: confirm '{best}' vs {BASELINE} on fresh seeds ({time.time() - t0:.0f} s)", conf)
+        (bm, bse, *_), (vm, vse, *_) = stats(conf[best]), stats(conf[BASELINE])
         diff, dse = bm - vm, math.sqrt(bse ** 2 + vse ** 2)
         print(f"\nbest: {best}  flags off: {sorted(variants()[best])}")
-        print(f"confirm: {best} - v1 = {diff:+.2f} ± {dse:.2f}  ->  "
+        print(f"confirm: {best} - {BASELINE} = {diff:+.2f} ± {dse:.2f}  ->  "
               f"{'BETTER' if diff > 2 * dse else 'NOT CLEARLY BETTER'} (needs > 2 s.e.)")
     shutil.rmtree(root, ignore_errors=True)
 
