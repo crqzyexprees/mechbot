@@ -386,3 +386,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - 6e6e327 +explore2 4.56 (off). Testing lategrit+mortar60 + nodrop (don't race supply drops).
 - 32f7a1a +nodrop 4.64 (neutral, off). Testing + cookclose (laser prefers mortar carriers only within 120 m).
 - **18b7776 +cookclose 4.86** (best). Testing + nocook (laser never switches to a mortar carrier).
+- 8a51c09 +nocook 4.55 (worse; keep 120 m preference). Testing cook80 (prefer mortar carriers within 80 m).
