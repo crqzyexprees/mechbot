@@ -1123,7 +1123,7 @@ class Bot:
             return 220.0  # disengage, let regen work (lategrit: not in the end game, there is nowhere to go)
         theirs = foe.get("weapons") or []
         if "lightning" in slots and "mortar" not in theirs:
-            return 32.0
+            return 22.0 if flag("light22") else 32.0
         if "mortar" in slots:
             return 60.0 if flag("mortar60") else 90.0 if flag("mortar90") else 140.0
         if "laser" in slots:
