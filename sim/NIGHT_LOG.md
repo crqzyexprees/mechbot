@@ -313,3 +313,23 @@ game mechanics the sim models faithfully, and judge real results on more than on
   +0.53 ± 0.39, drone kills 1.0 -> 1.25 per match (8-match smoke test). Off by default.
 - 19:29 pushed and submitted 151b3cc (dronego on), receipt BB-683B28B1.
 - BB-683B28B1 (151b3cc, dronego) scored 4.29 vs 4.42 (-0.13, inside scorer noise). Sim: we only see about 3 of 12 drones per match, so dronego can add little either way.
+
+## Nov 21, 20:00 — what the top teams do
+- About 10 teams sit at exactly 6.19 (giddygiddyboy, Wai and Jai, W squad, tigerbyte earlier, ...): the same
+  public MIT Go bot (justnau/giddygiddyboy-mech-royale, source now removed; forks such as waiprotein/mech-royale-bot
+  credit it). Same fixed practice seeds -> same score.
+- Organisers' announcement (about 18:00): "excessive reuse of code, another team's entry included, may result in
+  disqualification". So no code from it; read for ideas only.
+- Its practice mode (squadParams, switched on after 20 s with no death it did not cause): laser first, goes up to
+  240 m for a laser, laser range 120 m, laser upgrades; loot radius 150 m; crates all match; farms NPC drones;
+  sticky targeting (200) with a strong low-HP bonus and lethal/finish logic; no retreat once the next circle is
+  <= 70 m or <= 3 alive. Its authors say other changes to practice play drop it to about 5.5.
+
+## Nov 21, 20:40 — own-code ideas from the comparison (all off, commit 28d7d90)
+- laserfirst: loot rank laser > lightning > mortar (never tested; lootflip only beat mortar-first).
+- laserfar: walk up to 150 m for a laser (40 m before).
+- laserup: laser_damage, then gun_mag, then laser_charge first in upgrade offers (offered only while holding a laser).
+- laserhold: keep a full laser charge (hold_s 2 s) instead of releasing it into a wall or at a hidden target.
+- lategrit: no low-HP disengage once the next circle is <= 70 m or 3 or fewer are alive.
+- nodrop: skip supply drops (the squad converges on the ring).
+- The sim has no weapon loot or drops, so all of these are real-scorer tests. check.py PASS with all on.
