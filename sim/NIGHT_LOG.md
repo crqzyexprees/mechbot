@@ -356,3 +356,6 @@ game mechanics the sim models faithfully, and judge real results on more than on
   (-5,255), stadium stands at (-196,60), courtyards) never escape. Added `escape` (jet out after 6 s
   boxed in) as a real-game safety net anyway.
 - Submitted db2f116 (escape) BB-A847B967. Next: adc0cac (lead110: lead x1.1).
+- builders-4 results: db2f116 escape 4.26 (BB-A847B967); adc0cac lead110 4.10 (BB-271682F1);
+  481598a farm (escape+explore+dronego+cratego) 4.24 (BB-079FE421). Queued: b9d0ee0 farm+laser (BB-A3B6CE23).
+  Next: a0dce70 uptank on farm.
