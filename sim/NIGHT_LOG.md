@@ -367,3 +367,5 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - 006d895 close2+mortar90 4.63; 3244a1c +hunt 4.54 (hunt off). Board: 382 teams, #32 = 5.91, us #157 (4.65).
 - Sim screen on close2 (160 seeds): strafe2 -0.39, focus -0.04, tol4 +0.25, gatehv2 +0.25, dodge25 -0.05,
   upservo -0.12, regroup +0.14 (all within noise). Testing 36dc394 close2+mortar90+tol4 (BB-5C709A03).
+- 36dc394 tol4 4.36 (wider gate loses again); 7e75124 rc30 4.58 (neutral). Sim sw05/sw12/rc30 all ~+0.35 (base low).
+  Testing 79a9fa7 tol28 (tighter gate) BB-900333BA.
