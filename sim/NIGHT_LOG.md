@@ -375,3 +375,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - e00a5de laser60 4.58 (laser80 stays best). Testing 10d29ac laser80+sw12 (stronger strafe).
 - 10d29ac sw12 (stronger strafe) 4.23: clearly worse. Testing 5566890 sw05 (weaker strafe).
 - 5566890 sw05 4.65 (neutral; strafe stays 0.8). Testing e223c9c laser80+lategrit.
+- **e223c9c laser80+lategrit 4.75** (best). Testing + retreat20 (retreat below 20% HP instead of 35%).
