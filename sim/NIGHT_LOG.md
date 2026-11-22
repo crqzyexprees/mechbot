@@ -362,3 +362,5 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - b9d0ee0 farm+laser 4.34; a0dce70 uptank 4.38; **039b9b1 close (gun 80 m, laser 120 m) 4.57** (best,
   sim predicted +0.84/+0.55). Queued 750e212 close+uptank; next d2d6d01 close2 (55 m / 100 m).
 - Sim on close: close2 +0.18 ± 0.33 (hit +4.3*), hunt +0.29 ± 0.22, lategrit -0.03.
+- Range sweep (real, builders-4): 110 m ~4.25 (6 runs) | 80 m 4.57, 4.52 (+uptank) | **55 m 4.65** (d2d6d01) | 35 m 4.53.
+  Plateau around 55-80 m. Base is now close2. Testing 006d895 close2+mortar90 (BB-6012DAFF).
