@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "lategrit", "nodrop"}
+    _OFF = {"discipline", "uppower", "upmag", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "lootfar", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "lategrit", "nodrop", "close2"}
 
 
 def flag(name):
@@ -1127,8 +1127,8 @@ class Bot:
         if "mortar" in slots:
             return 140.0
         if "laser" in slots:
-            return 120.0 if flag("close") else 160.0
-        return 80.0 if flag("close") else 110.0
+            return 100.0 if flag("close2") else 120.0 if flag("close") else 160.0
+        return 55.0 if flag("close2") else 80.0 if flag("close") else 110.0
 
     def _drop_plan(self, obs, me, x, y, boost_speed, enemies):
         """The supply drop worth racing for right now, or None."""
