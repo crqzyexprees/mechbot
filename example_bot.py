@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "lategrit", "nodrop", "retreat20", "close3"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "lategrit", "nodrop", "retreat20", "close3", "sw05", "sw12", "rc30", "hunt"}
 
 
 def flag(name):
@@ -1505,7 +1505,7 @@ class Bot:
             if flag("outnumbered") and sum(math.dist(m["pos"][:2], (x, y)) < 150 for m in enemies) >= 2:
                 want = 250.0  # two or more on us: get out, let them fight each other
             ex, ey = _norm(x - f["pos"][0], y - f["pos"][1])
-            k = max(-1.0, min(1.0, (want - d) / 60.0))
+            k = max(-1.0, min(1.0, (want - d) / (30.0 if flag("rc30") else 60.0)))
             if flag("nochase"):
                 k = max(0.0, k)  # back off or hold, never walk toward a fight
             rcx, rcy = ex * k * 1.2, ey * k * 1.2
@@ -1526,7 +1526,7 @@ class Bot:
 
         # blend: zone pull dominates when it is urgent, dodges dominate when a hit is incoming
         zone_w = 2.5 if risk else 1.0
-        sw = 1.2 if flag("strafe2") else 0.8
+        sw = 1.2 if flag("strafe2") else 0.5 if flag("sw05") else 1.2 if flag("sw12") else 0.8
         mx = gx * pull * zone_w + sx * sw + ddx * 1.8 + rcx
         my = gy * pull * zone_w + sy * sw + ddy * 1.8 + rcy
         mag = min(1.0, math.hypot(mx, my))
