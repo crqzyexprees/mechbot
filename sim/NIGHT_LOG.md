@@ -379,3 +379,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - a2b04ba +retreat20 4.52 (worse). Testing + retreat45 (retreat below 45% HP, lategrit on).
 - 7a53be8 +retreat45 4.53 (worse; 35% stays). Testing lategrit base + regroup (heal to 85% out of sight between fights).
 - cb0e7ff +regroup 4.45 (worse). Testing lategrit + late5 (endgame = next circle <=100 m or <=5 alive).
+- 1c69d29 +late5 4.65 (neutral, off). Testing lategrit base + mortar60 (mortar fights at 60 m instead of 90).
