@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "lategrit", "nodrop", "close2"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "lategrit", "nodrop", "retreat20", "hunt"}
 
 
 def flag(name):
@@ -1119,7 +1119,7 @@ class Bot:
     # ---------------------------------------------------------------------------- goals
     def _want_range(self, me, foe, slots):
         """Distance we'd like to fight at, from what we hold (and whether we're losing)."""
-        if me["hp"] < 0.35 * me["max_hp"] and not (flag("lategrit") and self.late):
+        if me["hp"] < (0.2 if flag("retreat20") else 0.35) * me["max_hp"] and not (flag("lategrit") and self.late):
             return 220.0  # disengage, let regen work (lategrit: not in the end game, there is nowhere to go)
         theirs = foe.get("weapons") or []
         if "lightning" in slots and "mortar" not in theirs:
@@ -1127,8 +1127,8 @@ class Bot:
         if "mortar" in slots:
             return 140.0
         if "laser" in slots:
-            return 100.0 if flag("close2") else 120.0 if flag("close") else 160.0
-        return 55.0 if flag("close2") else 80.0 if flag("close") else 110.0
+            return 80.0 if flag("close3") else 100.0 if flag("close2") else 120.0 if flag("close") else 160.0
+        return 35.0 if flag("close3") else 55.0 if flag("close2") else 80.0 if flag("close") else 110.0
 
     def _drop_plan(self, obs, me, x, y, boost_speed, enemies):
         """The supply drop worth racing for right now, or None."""
