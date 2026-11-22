@@ -333,3 +333,11 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - lategrit: no low-HP disengage once the next circle is <= 70 m or 3 or fewer are alive.
 - nodrop: skip supply drops (the squad converges on the ring).
 - The sim has no weapon loot or drops, so all of these are real-scorer tests. check.py PASS with all on.
+- 20:39 submitted cdc5522 (laserpack), BB-15B906F5. Queue: 6da0ef3 nodrop, 2a3b2be lategrit, 58ef531 laserhold.
+- BB-15B906F5 (cdc5522 laserpack) scored 4.35 vs 4.42 (neutral). 20:47 submitted 6da0ef3 (nodrop), BB-7CB426A0.
+- BB-7CB426A0 (6da0ef3 nodrop) scored 4.27 vs 4.42 (neutral to slightly worse). 20:56 submitted 2a3b2be (lategrit), BB-081CD37D.
+- BB-081CD37D (2a3b2be lategrit) scored 4.29 (neutral). 21:04 submitted 58ef531 (laserhold), BB-03B39DD3.
+- BB-03B39DD3 (58ef531 laserhold) scored 4.31.
+- Batch verdict: laserpack 4.35, nodrop 4.27, lategrit 4.29, laserhold 4.31. All within 0.15 of 4.42; every
+  submission since 4.42 sits in 4.27-4.35, so the 4.42 may be a high draw of a bot whose true level is about 4.3.
+  Next: rescore the 4.42 behaviour (661b73e) to measure that.
