@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "dronego"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "dronego", "laserfirst", "laserfar", "laserup", "lategrit", "laserhold", "nodrop", "lead110"}
 
 
 def flag(name):
@@ -500,6 +500,7 @@ class Bot:
         self.hist = []            # recent (t, x, y, commanded move magnitude)
         self.detour = None        # (until_t, dx, dy) while committed to a sideways detour
         self.stuck_log = []       # times we detected being stuck (for escalation)
+        self.esc_hist, self.esc_until = [], -1.0  # escape: boxed-in detection
         self.detour_side = 1
         self.steer_side = 1       # which way steering last swung, for hysteresis
         self.strafe_side = 1
@@ -1068,8 +1069,9 @@ class Bot:
                 gtgt = dict(tgt, pos=[tgt["pos"][i] + tv[i] * lat for i in range(3)], vel=list(tv))
             # leadk: lead only part of the target's motion; a strafing mech often turns back while the
             # bullet flies, and a full lead then passes in front of it
-            k = 0.5 if flag("lead50") else 0.7 if flag("lead70") else 0.85 if flag("lead85") else 1.0
-            if k < 1.0:
+            k = (0.5 if flag("lead50") else 0.7 if flag("lead70") else 0.85 if flag("lead85")
+                 else 1.1 if flag("lead110") else 1.0)
+            if k != 1.0:
                 gtgt = dict(gtgt, vel=[gtgt["vel"][0] * k, gtgt["vel"][1] * k, gtgt["vel"][2]])
             gyaw, gpitch, gd = _lead(gme, gtgt, st["speed"])
             if aim is None:
@@ -1539,6 +1541,33 @@ class Bot:
                     hx, hy = _norm(rx - x, ry - y)
                     mag = 0.6 if math.hypot(rx - x, ry - y) > 2.0 else 0.0
 
+        # escape: boxed in (an alley, a courtyard, the stadium bowl): we've wanted to move for 6 s and
+        # stayed inside an 8 m circle. Head straight for the next circle's centre, hop and jet over
+        # whatever is in the way (100 energy climbs ~60 m), and don't sprint meanwhile so the energy is
+        # there for the climb.
+        esc = False
+        if flag("escape"):
+            self.esc_hist.append((t, x, y, mag))
+            while self.esc_hist and t - self.esc_hist[0][0] > 6.0:
+                self.esc_hist.pop(0)
+            if t < self.esc_until:
+                esc = True
+            elif (len(self.esc_hist) > 25 and t - self.esc_hist[0][0] > 5.5 and roof_state != "roof"
+                  and (risk or not enemies)
+                  and sum(h[3] > 0.5 for h in self.esc_hist) > 0.8 * len(self.esc_hist)
+                  and max(math.hypot(h[1] - x, h[2] - y) for h in self.esc_hist) < 8.0):
+                self.esc_until = t + 6.0
+                self.esc_hist.clear()
+                esc = True
+            if esc:
+                nc = zone["next_center"]
+                hx, hy = _norm(nc[0] - x, nc[1] - y)
+                mag, mode = 1.0, "escape"
+                self.detour = None
+                self.hist.clear()
+                jump = grounded and energy >= 50
+                boost_climb = (not grounded) and energy > 2
+
         # boost: zone first, then urgent dodges and drop races (keeping a reserve for the zone)
         if risk and energy > (2 if outside else 15):
             self.zone_boosting = True
@@ -1553,6 +1582,8 @@ class Bot:
             dodge_boost = False
         boost = grounded and mag > 0.5 and (self.zone_boosting or dodge_boost or drop_boost)
         boost = boost or boost_climb
+        if esc:
+            boost = boost_climb  # keep the energy for the climb
 
         if (flag("peekstep") and self.peek is not None and t < self.peek[2] and enemies and not risk
                 and mode not in ("hide", "regroup")):
