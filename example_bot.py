@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "tol4", "tol28", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "topup", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "nodrop", "close3", "sw12", "sw05", "hunt", "rc30", "laser160", "laser60", "retreat20", "retreat45", "late5", "light22"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "tol4", "tol28", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "topup", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "nodrop", "close3", "sw12", "sw05", "hunt", "rc30", "laser160", "laser60", "retreat20", "retreat45", "late5", "light22", "light40"}
 
 
 def flag(name):
@@ -1455,8 +1455,8 @@ class Bot:
                     k = (ci + di, cj + dj)
                     if k not in self.explored and math.hypot((k[0] + 0.5) * 80 - x, (k[1] + 0.5) * 80 - y) < 70:
                         self.explored.add(k)
-            if (mode in ("safe", "cover") and not enemies and not risk and t < 210
-                    and me["hp"] >= 0.6 * me["max_hp"]):
+            if (mode in ("safe", "cover") and not enemies and not risk and t < (300 if flag("explore2") else 210)
+                    and me["hp"] >= (0.5 if flag("explore2") else 0.6) * me["max_hp"]):
                 nc, nr = zone["next_center"], zone["next_radius"] - 25
                 best = None
                 n_ = int(nr / 80.0) + 1

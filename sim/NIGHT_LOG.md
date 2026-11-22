@@ -382,3 +382,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - 1c69d29 +late5 4.65 (neutral, off). Testing lategrit base + mortar60 (mortar fights at 60 m instead of 90).
 - f906d75 +mortar60 4.74 (= best, kept). Testing + light22 (lightning fights at 22 m instead of 32).
 - 8d55824 +light22 4.41 (worse). Testing + light40 (lightning at 40 m).
+- ad54d32 +light40 4.56 (worse; lightning stays 32 m). Testing + explore2 (explore until t<300 s, HP>=50%).
