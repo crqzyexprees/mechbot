@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "tol4", "tol28", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "topup", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "close3", "sw12", "sw05", "hunt", "rc30", "laser160", "laser60", "retreat20", "retreat45", "late5", "light22", "light40", "explore2"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "tol4", "tol28", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "topup", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "close3", "sw12", "sw05", "hunt", "rc30", "laser160", "laser60", "retreat20", "retreat45", "late5", "light22", "light40", "explore2", "nodrop"}
 
 
 def flag(name):
@@ -994,7 +994,7 @@ class Bot:
 
         def laser_target(rng):  # laser cooks off mortar carriers (+60%): prefer them
             return next((m for m in enemies if "mortar" in (m.get("weapons") or [])
-                         and math.dist(m["pos"][:2], (x, y)) < rng), tgt)
+                         and math.dist(m["pos"][:2], (x, y)) < (min(rng, 120.0) if flag("cookclose") else rng)), tgt)
 
         # laser already charging: keep the beam on target, let go when full and lined up
         if "laser" in W:
