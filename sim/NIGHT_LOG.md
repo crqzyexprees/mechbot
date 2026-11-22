@@ -346,3 +346,13 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Each alone scored 4.27-4.35 for real. Sim paired test, 240 seeds from 5200000: +0.05 ± 0.05 (sim has no loot, so it can't judge the laser parts).
 - check.py PASS locally (max 10.5 ms) and in the container (max 10.8 ms). lead85 (3.94) and dronego (4.29) left out.
 - Real: BB-56680DEB (3b7db4f) scored 4.33. Same band as each change alone (4.27-4.35); not better than 4.42.
+
+## Sun 22 Nov, overnight loop (user: free hand until 11:00 to push/test)
+- Scorer moved to builders-3, then builders-4: 96 fresh random seeds per run, identical code keeps its
+  first score, one queued submission per team at a time. All earlier scores are "previous version".
+- builders-3: BB-AAC398E1 (661b73e, the 4.42 behaviour) 4.18. Board: rank 81/94, #32 = 5.52, #1 = 6.28.
+- With fresh seeds a run's noise is about ±0.3 (per-match sd ~2.8 / sqrt 96): only big changes show.
+- Sim zone deaths (11%) are mostly a sim artifact: the sim has no jumping, so boxed-in spawns (alley at
+  (-5,255), stadium stands at (-196,60), courtyards) never escape. Added `escape` (jet out after 6 s
+  boxed in) as a real-game safety net anyway.
+- Submitted db2f116 (escape) BB-A847B967. Next: adc0cac (lead110: lead x1.1).
