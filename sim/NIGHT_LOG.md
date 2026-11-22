@@ -391,3 +391,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - e3e2b57 cook160 4.45 (off; 120 stays). Testing cookclose base + mortol (mortar fire gate 4.5 m).
 - 937aea7 +mortol 4.81 (~best, kept). Testing + mortol6 (mortar gate 6 m).
 - a03150a mortol6 4.44 (worse; 4.5 m stays). Testing mortol + morpitch (mortar pitch tolerance 0.045).
+- d2cd1c8 +morpitch 4.46 (off). Last test before cutoff: mortol base + laser90.

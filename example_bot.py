@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "tol4", "tol28", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "topup", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "close3", "sw12", "sw05", "hunt", "rc30", "laser160", "laser60", "retreat20", "retreat45", "late5", "light22", "light40", "explore2", "nodrop", "nocook", "cook80", "cook160", "mortol6"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "tol4", "tol28", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "topup", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "close3", "sw12", "sw05", "hunt", "rc30", "laser160", "laser60", "retreat20", "retreat45", "late5", "light22", "light40", "explore2", "nodrop", "nocook", "cook80", "cook160", "mortol6", "morpitch"}
 
 
 def flag(name):
@@ -1129,7 +1129,7 @@ class Bot:
         if "mortar" in slots:
             return 60.0 if flag("mortar60") else 90.0 if flag("mortar90") else 140.0
         if "laser" in slots:
-            return 160.0 if flag("laser160") else 60.0 if flag("laser60") else 80.0 if flag("laser80") else 80.0 if flag("close3") else 100.0 if flag("close2") else 120.0 if flag("close") else 160.0
+            return 160.0 if flag("laser160") else 60.0 if flag("laser60") else 90.0 if flag("laser90") else 80.0 if flag("laser80") else 80.0 if flag("close3") else 100.0 if flag("close2") else 120.0 if flag("close") else 160.0
         return 35.0 if flag("close3") else 55.0 if flag("close2") else 80.0 if flag("close") else 110.0
 
     def _drop_plan(self, obs, me, x, y, boost_speed, enemies):
