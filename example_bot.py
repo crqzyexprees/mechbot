@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "dronego", "laserfirst", "laserfar", "laserup", "lategrit", "laserhold", "nodrop", "escape"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "laserfirst", "laserfar", "laserup", "lategrit", "laserhold", "nodrop", "lead110"}
 
 
 def flag(name):
@@ -501,6 +501,7 @@ class Bot:
         self.detour = None        # (until_t, dx, dy) while committed to a sideways detour
         self.stuck_log = []       # times we detected being stuck (for escalation)
         self.esc_hist, self.esc_until = [], -1.0  # escape: boxed-in detection
+        self.explored = set()     # explore: 80 m world cells we have been near
         self.detour_side = 1
         self.steer_side = 1       # which way steering last swung, for hysteresis
         self.strafe_side = 1
@@ -1441,6 +1442,41 @@ class Bot:
                 nc = zone["next_center"]
                 if math.hypot(best[1] - nc[0], best[2] - nc[1]) < zone["next_radius"] - 10:
                     mode = "crate"
+                    gx, gy = _norm(best[1] - x, best[2] - y)
+                    pull = 1.0
+
+        # explore: early (one hunter at a time), idle and healthy: walk to the nearest 80 m cell inside the
+        # next circle that we have not been within 70 m of, to find drones (2 cubes each, we see ~3 of 12)
+        # and crates out of sight. Cells are on a fixed world grid so they stay put as the zone moves.
+        if flag("explore"):
+            ci, cj = int(math.floor(x / 80.0)), int(math.floor(y / 80.0))
+            for di in (-1, 0, 1):
+                for dj in (-1, 0, 1):
+                    k = (ci + di, cj + dj)
+                    if k not in self.explored and math.hypot((k[0] + 0.5) * 80 - x, (k[1] + 0.5) * 80 - y) < 70:
+                        self.explored.add(k)
+            if (mode in ("safe", "cover") and not enemies and not risk and t < 210
+                    and me["hp"] >= 0.6 * me["max_hp"]):
+                nc, nr = zone["next_center"], zone["next_radius"] - 25
+                best = None
+                n_ = int(nr / 80.0) + 1
+                i0, j0 = int(math.floor(nc[0] / 80.0)), int(math.floor(nc[1] / 80.0))
+                for i in range(i0 - n_, i0 + n_ + 1):
+                    for j in range(j0 - n_, j0 + n_ + 1):
+                        if (i, j) in self.explored:
+                            continue
+                        px_, py_ = (i + 0.5) * 80, (j + 0.5) * 80
+                        if math.hypot(px_ - nc[0], py_ - nc[1]) > nr:
+                            continue
+                        if self.grid is not None:
+                            kc = self.grid.cell(px_, py_)
+                            if kc is None or self.grid.solid[kc]:
+                                continue
+                        d = math.hypot(px_ - x, py_ - y)
+                        if best is None or d < best[0]:
+                            best = (d, px_, py_)
+                if best is not None:
+                    mode = "explore"
                     gx, gy = _norm(best[1] - x, best[2] - y)
                     pull = 1.0
 
