@@ -993,6 +993,8 @@ class Bot:
                 act["reload"] = True
 
         def laser_target(rng):  # laser cooks off mortar carriers (+60%): prefer them
+            if flag("nocook"):
+                return tgt
             return next((m for m in enemies if "mortar" in (m.get("weapons") or [])
                          and math.dist(m["pos"][:2], (x, y)) < (min(rng, 120.0) if flag("cookclose") else rng)), tgt)
 
