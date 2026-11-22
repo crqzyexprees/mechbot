@@ -369,3 +369,5 @@ game mechanics the sim models faithfully, and judge real results on more than on
   upservo -0.12, regroup +0.14 (all within noise). Testing 36dc394 close2+mortar90+tol4 (BB-5C709A03).
 - 36dc394 tol4 4.36 (wider gate loses again); 7e75124 rc30 4.58 (neutral). Sim sw05/sw12/rc30 all ~+0.35 (base low).
   Testing 79a9fa7 tol28 (tighter gate) BB-900333BA.
+- 79a9fa7 tol28 4.55 (neutral); 40b695e laser160 (gun 55, laser 160) 4.40: the closer laser range matters too.
+  cbd5a06 was a broken laser80 commit (laser160 still on; never submitted). Testing 1cafc25 laser80 (gun 55, laser 80).
