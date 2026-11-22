@@ -387,3 +387,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - 32f7a1a +nodrop 4.64 (neutral, off). Testing + cookclose (laser prefers mortar carriers only within 120 m).
 - **18b7776 +cookclose 4.86** (best). Testing + nocook (laser never switches to a mortar carrier).
 - 8a51c09 +nocook 4.55 (worse; keep 120 m preference). Testing cook80 (prefer mortar carriers within 80 m).
+- b49acf4 cook80 4.38 (worse). Cook range: 280 m 4.75 | 160 ? | 120 m 4.86 | 80 m 4.38 | none 4.55. Testing cook160.
