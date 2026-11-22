@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "dronego"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "dronego", "laserfirst", "laserfar", "laserup", "lategrit", "laserhold", "nodrop"}
 
 
 def flag(name):
@@ -71,6 +71,8 @@ def _angdiff(a, b):
 LOOT_RANK = {"mortar": 3, "lightning": 2, "laser": 1, "gun": 0}  # laser last: charging halves speed
 # lootflip: by damage per second lightning (240, no aim) > laser (131, hitscan) > mortar (~77 on a direct hit)
 LOOT_FLIP = {"lightning": 3, "laser": 2, "mortar": 1, "gun": 0}
+# laserfirst: the laser is hitscan with no spread out to 280 m and 315 damage a shot (seven gun hits)
+LOOT_LASER = {"laser": 3, "lightning": 2, "mortar": 1, "gun": 0}
 UPGRADE_PREF = ["servos", "jets", "armor", "capacitor", "nanites", "reactor", "gyros",
                 "gun_velocity", "gun_rate", "mortar_velocity", "lightning_range", "plating"]
 _WEAPON_UPS = ["mortar_reload", "mortar_velocity", "mortar_splash", "lightning_efficiency", "lightning_range",
@@ -530,6 +532,7 @@ class Bot:
         self.crate_id = None      # crate we're shooting open for its cube
         self.drone_id = None      # NPC drone we're sniping for its 2 cubes
         self.drones_seen = {}     # NPC drone id -> (x, y, z, t) of its last sighting, for dronego
+        self.late = False         # end game: next circle <= 70 m or 3 or fewer alive (lategrit)
         self.tgt_since = -99.0
 
     # ---------------------------------------------------------------------------- zone model
@@ -997,8 +1000,19 @@ class Bot:
             st = L["stats"]
             ch = L.get("charge") or 0
             if ch > 0:
-                lyaw, lpitch, ld = _lead(me, laser_target(st["range"]), 1e9)
-                fire[slots["laser"]] = not (ch >= st["charge"] and _aimed(me, lyaw, lpitch, ld, 2.0))
+                lt_ = laser_target(st["range"])
+                lyaw, lpitch, ld = _lead(me, lt_, 1e9)
+                release = ch >= st["charge"] and _aimed(me, lyaw, lpitch, ld, 2.0)
+                if release and flag("laserhold") and self.grid is not None:
+                    # laserhold: a full charge keeps for hold_s (2 s); don't spend it (and 1.65 s of cooldown)
+                    # on a wall: hold it while the target is out of sight or the barrel line meets cover
+                    ltp = lt_["pos"]
+                    mh_ = stats.get("muzzle_height", 7.0)
+                    hidden = (abs(ltp[2] - z) < 4 and not self.grid.los(x, y, ltp[0], ltp[1])) or not \
+                        self.grid.shot_clear(x, y, z + mh_, me["aim"][0], me["aim"][1], min(ld, 40.0))
+                    if hidden and ch < st["charge"] + st.get("hold_s", 2.0) - 0.2:
+                        release = False
+                fire[slots["laser"]] = not release
                 if flag("laserblend") and "gun" in W and ch < st["charge"] - 0.1:
                     blend_hold = True  # gun block below takes the aim; the trigger stays held
                 else:
@@ -1102,8 +1116,8 @@ class Bot:
     # ---------------------------------------------------------------------------- goals
     def _want_range(self, me, foe, slots):
         """Distance we'd like to fight at, from what we hold (and whether we're losing)."""
-        if me["hp"] < 0.35 * me["max_hp"]:
-            return 220.0  # disengage, let regen work
+        if me["hp"] < 0.35 * me["max_hp"] and not (flag("lategrit") and self.late):
+            return 220.0  # disengage, let regen work (lategrit: not in the end game, there is nowhere to go)
         theirs = foe.get("weapons") or []
         if "lightning" in slots and "mortar" not in theirs:
             return 32.0
@@ -1153,6 +1167,7 @@ class Bot:
         vx, vy = me["vel"][0], me["vel"][1]
         t = obs["t"]
         zone = obs["zone"]
+        self.late = zone["next_radius"] <= 70 or obs["alive"] <= 3
         stats = me.get("stats", {})
         walk = stats.get("walk_speed", 11.7)
         boost_speed = stats.get("boost_speed", 19.5)
@@ -1192,6 +1207,9 @@ class Bot:
                 pref = ["servos"] + [u for u in pref if u != "servos"]
             if flag("upmag"):  # +8 rounds and -20% reload: +31% sustained gun damage, vs +15% for gun_damage
                 pref = ["gun_mag"] + [u for u in pref if u != "gun_mag"]
+            if flag("laserup"):  # offered only while we hold a laser: +18% of 315 a shot, then a 25% faster charge
+                pref = ["laser_damage"] + [u for u in pref if u != "laser_damage"]
+                pref = pref[:2] + ["laser_charge"] + [u for u in pref[2:] if u != "laser_charge"]
             act["pick"] = min(range(len(ids)), key=lambda i: pref.index(ids[i]) if ids[i] in pref else 99)
 
         # ---- loot: take or swap in anything better within reach; remember a better one in sight ----
@@ -1202,7 +1220,7 @@ class Bot:
             k = p["kind"]
             if k in slots or k == "gun":
                 continue  # can't hold two of a kind
-            rank = LOOT_FLIP if flag("lootflip") else LOOT_RANK
+            rank = LOOT_LASER if flag("laserfirst") else LOOT_FLIP if flag("lootflip") else LOOT_RANK
             if cur1 is not None and rank.get(k, 0) <= rank.get(cur1["kind"], 0):
                 continue
             dh = math.dist(p["pos"][:2], (x, y))
@@ -1213,7 +1231,8 @@ class Bot:
                     act["drop"] = 1
                 act["take"] = p["id"]
                 break
-            far = 120 if flag("lootfar") and t < 150 else 100 if flag("lootfar2") and k in ("lightning", "laser") else 40
+            far = (150 if flag("laserfar") and k == "laser" else 120 if flag("lootfar") and t < 150
+                   else 100 if flag("lootfar2") and k in ("lightning", "laser") else 40)
             if loot_goal is None and dh < far and not foes_close:
                 loot_goal = (p["pos"][0], p["pos"][1])
 
@@ -1235,7 +1254,7 @@ class Bot:
         field = self._update_field(zone, t)
         route = field.route(x, y, z, self.radius + 0.5) if (field and target is not None) else None
         risk = outside or self._zone_risk(zone, t, x, y, target, walk, route[1] if route else None)
-        drop = None if risk else self._drop_plan(obs, me, x, y, boost_speed, enemies)
+        drop = None if risk or flag("nodrop") else self._drop_plan(obs, me, x, y, boost_speed, enemies)
 
         mode = ("path" if route else "zone") if target is not None else "safe"
         wp_d = None  # distance to the route waypoint when we're following the flow field
