@@ -1127,7 +1127,7 @@ class Bot:
         if "mortar" in slots:
             return 90.0 if flag("mortar90") else 140.0
         if "laser" in slots:
-            return 160.0 if flag("laser160") else 80.0 if flag("close3") else 100.0 if flag("close2") else 120.0 if flag("close") else 160.0
+            return 160.0 if flag("laser160") else 80.0 if flag("laser80") else 80.0 if flag("close3") else 100.0 if flag("close2") else 120.0 if flag("close") else 160.0
         return 35.0 if flag("close3") else 55.0 if flag("close2") else 80.0 if flag("close") else 110.0
 
     def _drop_plan(self, obs, me, x, y, boost_speed, enemies):
