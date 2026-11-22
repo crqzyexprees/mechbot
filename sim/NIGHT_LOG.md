@@ -373,3 +373,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
   cbd5a06 was a broken laser80 commit (laser160 still on; never submitted). Testing 1cafc25 laser80 (gun 55, laser 80).
 - **1cafc25 laser80 (gun 55, laser 80) 4.73** (best). Laser range: 160 m 4.40 | 100 m 4.63-4.65 | 80 m 4.73. Testing e00a5de laser60.
 - e00a5de laser60 4.58 (laser80 stays best). Testing 10d29ac laser80+sw12 (stronger strafe).
+- 10d29ac sw12 (stronger strafe) 4.23: clearly worse. Testing 5566890 sw05 (weaker strafe).
