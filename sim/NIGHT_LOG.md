@@ -341,3 +341,7 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Batch verdict: laserpack 4.35, nodrop 4.27, lategrit 4.29, laserhold 4.31. All within 0.15 of 4.42; every
   submission since 4.42 sits in 4.27-4.35, so the 4.42 may be a high draw of a bot whose true level is about 4.3.
   Next: rescore the 4.42 behaviour (661b73e) to measure that.
+
+## Combo: laserfirst + laserfar + laserup + laserhold + nodrop + lategrit (user asked to try all together)
+- Each alone scored 4.27-4.35 for real. Sim paired test, 240 seeds from 5200000: +0.05 ± 0.05 (sim has no loot, so it can't judge the laser parts).
+- check.py PASS locally (max 10.5 ms) and in the container (max 10.8 ms). lead85 (3.94) and dronego (4.29) left out.
