@@ -381,3 +381,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - cb0e7ff +regroup 4.45 (worse). Testing lategrit + late5 (endgame = next circle <=100 m or <=5 alive).
 - 1c69d29 +late5 4.65 (neutral, off). Testing lategrit base + mortar60 (mortar fights at 60 m instead of 90).
 - f906d75 +mortar60 4.74 (= best, kept). Testing + light22 (lightning fights at 22 m instead of 32).
+- 8d55824 +light22 4.41 (worse). Testing + light40 (lightning at 40 m).
