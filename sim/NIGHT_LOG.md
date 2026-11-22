@@ -383,3 +383,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - f906d75 +mortar60 4.74 (= best, kept). Testing + light22 (lightning fights at 22 m instead of 32).
 - 8d55824 +light22 4.41 (worse). Testing + light40 (lightning at 40 m).
 - ad54d32 +light40 4.56 (worse; lightning stays 32 m). Testing + explore2 (explore until t<300 s, HP>=50%).
+- 6e6e327 +explore2 4.56 (off). Testing lategrit+mortar60 + nodrop (don't race supply drops).
