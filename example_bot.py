@@ -1042,7 +1042,7 @@ class Bot:
             if sol:
                 myaw, mpitch = sol
                 aim, tag = (myaw, mpitch), "mortar"
-                if (W["mortar"]["cooldown"] <= 0 and abs(_angdiff(me["aim"][0], myaw)) * d < (4.5 if flag("mortol") else 3.0)
+                if (W["mortar"]["cooldown"] <= 0 and abs(_angdiff(me["aim"][0], myaw)) * d < (6.0 if flag("mortol6") else 4.5 if flag("mortol") else 3.0)
                         and abs(me["aim"][1] - mpitch) < 0.03):
                     fire[slots["mortar"]] = True
 

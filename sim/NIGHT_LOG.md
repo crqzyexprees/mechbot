@@ -389,3 +389,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - 8a51c09 +nocook 4.55 (worse; keep 120 m preference). Testing cook80 (prefer mortar carriers within 80 m).
 - b49acf4 cook80 4.38 (worse). Cook range: 280 m 4.75 | 160 ? | 120 m 4.86 | 80 m 4.38 | none 4.55. Testing cook160.
 - e3e2b57 cook160 4.45 (off; 120 stays). Testing cookclose base + mortol (mortar fire gate 4.5 m).
+- 937aea7 +mortol 4.81 (~best, kept). Testing + mortol6 (mortar gate 6 m).
