@@ -345,3 +345,4 @@ game mechanics the sim models faithfully, and judge real results on more than on
 ## Combo: laserfirst + laserfar + laserup + laserhold + nodrop + lategrit (user asked to try all together)
 - Each alone scored 4.27-4.35 for real. Sim paired test, 240 seeds from 5200000: +0.05 ± 0.05 (sim has no loot, so it can't judge the laser parts).
 - check.py PASS locally (max 10.5 ms) and in the container (max 10.8 ms). lead85 (3.94) and dronego (4.29) left out.
+- Real: BB-56680DEB (3b7db4f) scored 4.33. Same band as each change alone (4.27-4.35); not better than 4.42.
