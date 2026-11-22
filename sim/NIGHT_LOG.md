@@ -364,3 +364,6 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - Sim on close: close2 +0.18 ± 0.33 (hit +4.3*), hunt +0.29 ± 0.22, lategrit -0.03.
 - Range sweep (real, builders-4): 110 m ~4.25 (6 runs) | 80 m 4.57, 4.52 (+uptank) | **55 m 4.65** (d2d6d01) | 35 m 4.53.
   Plateau around 55-80 m. Base is now close2. Testing 006d895 close2+mortar90 (BB-6012DAFF).
+- 006d895 close2+mortar90 4.63; 3244a1c +hunt 4.54 (hunt off). Board: 382 teams, #32 = 5.91, us #157 (4.65).
+- Sim screen on close2 (160 seeds): strafe2 -0.39, focus -0.04, tol4 +0.25, gatehv2 +0.25, dodge25 -0.05,
+  upservo -0.12, regroup +0.14 (all within noise). Testing 36dc394 close2+mortar90+tol4 (BB-5C709A03).
