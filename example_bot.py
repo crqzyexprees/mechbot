@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "tol4", "tol28", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "topup", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "close3", "sw12", "sw05", "hunt", "rc30", "laser160", "laser60", "retreat20", "retreat45", "late5", "light22", "light40", "explore2", "nodrop", "nocook", "cook80", "cook160"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "widefield", "terrain", "inflate", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "tol4", "tol28", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "topup", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "lead110", "close3", "sw12", "sw05", "hunt", "rc30", "laser160", "laser60", "retreat20", "retreat45", "late5", "light22", "light40", "explore2", "nodrop", "nocook", "cook80", "cook160", "mortol6"}
 
 
 def flag(name):
@@ -1043,7 +1043,7 @@ class Bot:
                 myaw, mpitch = sol
                 aim, tag = (myaw, mpitch), "mortar"
                 if (W["mortar"]["cooldown"] <= 0 and abs(_angdiff(me["aim"][0], myaw)) * d < (6.0 if flag("mortol6") else 4.5 if flag("mortol") else 3.0)
-                        and abs(me["aim"][1] - mpitch) < 0.03):
+                        and abs(me["aim"][1] - mpitch) < (0.045 if flag("morpitch") else 0.03)):
                     fire[slots["mortar"]] = True
 
         # laser: start a charge only when slowing to half speed is safe
