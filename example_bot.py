@@ -37,7 +37,7 @@ NB8 = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 # simulator (sim/) sets SPEEDY_OFF to measure each switch on its own.
 _OFF = set(os.environ.get("SPEEDY_OFF", "").split(","))
 if "SPEEDY_OFF" not in os.environ:
-    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck"}
+    _OFF = {"discipline", "nochase", "cover", "outnumbered", "hide", "regroup", "focus", "strafe2", "uptank", "lootfar", "cratego", "widefield", "terrain", "inflate", "hunt", "hunt2", "roof", "arcsave", "lootfar2", "aimlat", "aimavg", "lead50", "lead70", "lead85", "peekreload", "tol2", "farhold", "aimsize", "upservo", "dodge25", "holdlead", "tol4", "topup", "tol28", "tol36", "tol6", "tol5", "gatehv", "gatehv2", "laserblend", "reloadduck", "dronego2", "dronego"}
 
 
 def flag(name):
@@ -1380,7 +1380,10 @@ class Bot:
         for m in obs["mechs"]:
             if m["kind"] == "npc":
                 self.drones_seen[m["id"]] = (m["pos"][0], m["pos"][1], m["pos"][2], t)
-        if (flag("dronego") and flag("drones") and mode in ("safe", "cover") and not enemies and not risk
+        # dronego2: also when every enemy in sight is over 150 m away and nobody has hit us for 3 s
+        far_only = (flag("dronego2") and not under_fire
+                    and all(math.dist(m["pos"][:2], (x, y)) > 150 for m in enemies))
+        if (flag("dronego") and flag("drones") and mode in ("safe", "cover") and (not enemies or far_only) and not risk
                 and me["hp"] >= 0.6 * me["max_hp"]):
             vis_npc = {m["id"] for m in obs["mechs"] if m["kind"] == "npc"}
             nc = zone["next_center"]
@@ -1577,7 +1580,9 @@ class Bot:
             wtag = "heal"
         # nobody in sight: snipe NPC drones (350 HP, 2 cubes) from beyond their 45-60 m home range,
         # where their 2.5-degree-spread bullets mostly miss and our 0.6-degree gun doesn't
-        if wtag is None and flag("drones") and not enemies and not risk and mode not in ("hide", "regroup"):
+        far_only2 = (flag("dronego2") and not under_fire
+                     and all(math.dist(m["pos"][:2], (x, y)) > 150 for m in enemies))
+        if wtag is None and flag("drones") and (not enemies or far_only2) and not risk and mode not in ("hide", "regroup"):
             gun = me["weapons"][0]
             mh = me["stats"].get("muzzle_height", 7.0)
             best = None

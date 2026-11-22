@@ -9,5 +9,5 @@ if __name__ == "__main__":
     with Pool(os.cpu_count()) as p:
         res = [r[0] for r in p.map(sim.one_match, [(kit, bot, sweep.TIERS, s0 + i, 1, sweep.SQUAD) for i in range(n)])]
     print(f"score {st.mean(16 - r['place'] for r in res):.2f}  kills {st.mean(len(r['kill_ts']) for r in res):.2f}  drone kills {st.mean(r['npc_kills'] for r in res):.2f}"
-          f"  house drone kills {st.mean(r['house_npc_kills'] for r in res):.2f}  cubes {st.mean(r['cubes'] for r in res):.2f}  life {st.mean(r['life'] for r in res):.0f}"
+          f"  house drone kills {st.mean(r['house_npc_kills'] for r in res):.2f}  drones seen {st.mean(r['npc_seen'] for r in res):.2f} hit {st.mean(r['npc_hit'] for r in res):.2f}  cubes {st.mean(r['cubes'] for r in res):.2f}  life {st.mean(r['life'] for r in res):.0f}"
           f"  errors {sum(len(r['errors']) if isinstance(r['errors'], list) else r['errors'] for r in res)}  max ms {max(r['max_ms'] for r in res):.1f}")

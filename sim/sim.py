@@ -538,6 +538,7 @@ class Match:
     def npc_hit(self, n, dmg, owner):
         n["hp"] -= dmg
         n["tgt"] = owner
+        owner.__dict__.setdefault("npc_hit_ids", set()).add(n["id"])
         owner.events.append({"type": "hit", "target": n["id"], "amount": round(dmg, 1), "weapon": "gun"})
         if n["hp"] <= 0:
             self.npcs.remove(n)
@@ -1001,7 +1002,7 @@ def one_match(args):
                     "hmot": m.__dict__.get("hmot", [])[:3000],
                     "htr": m.__dict__.get("htr", []),
                     "dealt": me.__dict__.get("dealt", 0.0), "taken": me.__dict__.get("taken", 0.0),
-                    "npc_kills": me.__dict__.get("npc_kills", 0), "house_npc_kills": sum(x.__dict__.get("npc_kills", 0) for x in m.mechs if x is not me),
+                    "npc_kills": me.__dict__.get("npc_kills", 0), "npc_seen": sum(1 for k in me.seen if 100 <= k < 1000), "npc_hit": len(me.__dict__.get("npc_hit_ids", ())), "house_npc_kills": sum(x.__dict__.get("npc_kills", 0) for x in m.mechs if x is not me),
                     "life": round((me.death_tick if me.death_tick is not None else m.tick) * DT, 1),
                     "house_aimst": [x.__dict__.get("aimst") for x in m.mechs if x is not me],
                     "house_fate": [{"cause": x.__dict__.get("death_cause") if not x.alive else None,

@@ -311,3 +311,5 @@ game mechanics the sim models faithfully, and judge real results on more than on
   Note: drones also hit house bots, which inflates sim scores further (7.4 vs 5.8).
 - dronego (walk to drones seen earlier when idle, then the snipe takes over): 96 paired seeds 3600000:
   +0.53 ± 0.39, drone kills 1.0 -> 1.25 per match (8-match smoke test). Off by default.
+- 19:29 pushed and submitted 151b3cc (dronego on), receipt BB-683B28B1.
+- BB-683B28B1 (151b3cc, dronego) scored 4.29 vs 4.42 (-0.13, inside scorer noise). Sim: we only see about 3 of 12 drones per match, so dronego can add little either way.
