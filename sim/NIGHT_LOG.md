@@ -359,3 +359,6 @@ game mechanics the sim models faithfully, and judge real results on more than on
 - builders-4 results: db2f116 escape 4.26 (BB-A847B967); adc0cac lead110 4.10 (BB-271682F1);
   481598a farm (escape+explore+dronego+cratego) 4.24 (BB-079FE421). Queued: b9d0ee0 farm+laser (BB-A3B6CE23).
   Next: a0dce70 uptank on farm.
+- b9d0ee0 farm+laser 4.34; a0dce70 uptank 4.38; **039b9b1 close (gun 80 m, laser 120 m) 4.57** (best,
+  sim predicted +0.84/+0.55). Queued 750e212 close+uptank; next d2d6d01 close2 (55 m / 100 m).
+- Sim on close: close2 +0.18 ± 0.33 (hit +4.3*), hunt +0.29 ± 0.22, lategrit -0.03.
